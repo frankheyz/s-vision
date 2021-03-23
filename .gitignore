@@ -1,0 +1,8 @@
+# Default ignored files
+/shelf/
+/results/
+/__pycache__/
+/.idea/
+/venv/
+*.png
+*.jpg
