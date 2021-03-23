@@ -74,25 +74,12 @@ class SilverDataset(Dataset):
         return sample
 
     def high_res_2_low_res(self, high_res):
-        # todo rewrite here
         # Create son out of the father by downscaling and if indicated adding noise
-        # tensor_flag = isinstance(high_res, torch.Tensor)
-        # if tensor_flag:
-        #     # convert img to ndarray so that imresize can run
-        #     high_res = np.squeeze(high_res.numpy())
-        # lr_son = imresize3(high_res, 1.0 / self.scale_factor, kernel=self.kernel)
-
         # resize tensor
         lr_son = resize_tensor(torch.squeeze(high_res), 1.0 / self.scale_factor, kernel=self.kernel)
 
         # add noise
         lr_son_with_noise = np.clip(lr_son + np.random.randn(*lr_son.shape) * self.configs['noise_std'], 0, 1)
-        # # convert img back to tensor if necessary
-        # if tensor_flag:
-        #     # add a dimension
-        #     lr_son_with_noise = np.expand_dims(lr_son_with_noise, 0)
-        #     # convert it back
-        #     lr_son_with_noise = torch.from_numpy(lr_son_with_noise)
 
         return lr_son_with_noise
 

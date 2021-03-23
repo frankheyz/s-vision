@@ -75,23 +75,7 @@ class ZVision(nn.Module):
             output_shape=self.configs['crop_size'],
             kernel=self.configs['upscale_method']
         )
-        # # check if resize behave the same
-        # xb_np = xb.cpu().numpy()
-        # xb_np = np.squeeze(xb_np)
-        # xb_hi_res_np = imresize(
-        #     xb_np,
-        #     scale_factor=self.scale_factor,
-        #     output_shape=self.configs['crop_size'],
-        #     kernel=self.configs['upscale_method']
-        # )
-        # print(np.sum(xb_hi_res_np-xb_hi_res.numpy()))
 
-        # # convert it to tensor for convolution etc.
-        # xb_hi_res_t = torch.from_numpy(xb_hi_res).unsqueeze(0).unsqueeze(0)
-        if self.dev is not None:
-            xb_hi_res = xb_hi_res.to(self.dev)
-        #
-        xb_hi_res = xb_hi_res.float()
         # TODO check which activation function is better
         xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0)
         xb_mid = F.relu(self.layers[str(0)](xb_hi_res))
