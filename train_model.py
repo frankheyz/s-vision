@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import torch
 from torch import nn
-from silver import fit
-from silver import get_data
-from silver import get_model
+from zvision import fit
+from zvision import get_data
+from zvision import get_model
 from utils import SilverDataset
 from utils import RotationTransform
 from configs import configs as conf

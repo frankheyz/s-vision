@@ -16,12 +16,12 @@ from utils import imresize
 from utils import resize_tensor
 
 
-class Silver(nn.Module):
+class ZVision(nn.Module):
     base_sf = 1.0
     dev = None
 
     def __init__(self, configs=conf):
-        super(Silver, self).__init__()
+        super(ZVision, self).__init__()
         self.configs = configs
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
 
@@ -115,7 +115,7 @@ class Silver(nn.Module):
 
 
 def get_model(configs=conf):
-    model = Silver()
+    model = ZVision()
     return model, optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
 
