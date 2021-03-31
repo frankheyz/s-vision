@@ -56,8 +56,8 @@ class SilverDataset(Dataset):
             idx = idx.tolist()
 
         # todo convert to greyscale if it is required
-        # if self.configs['to_greyscale'] is True and is_greyscale(img) is False:
-        #     img = img.convert("L")
+        if self.configs['to_greyscale'] is True and is_greyscale(self.img) is False:
+            self.img = self.img.convert("L")
 
         # transform input image for augmentation
         if self.transform:
