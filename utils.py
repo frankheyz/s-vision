@@ -55,7 +55,7 @@ class SilverDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        # todo convert to greyscale if it is required
+        # convert to greyscale if it is required
         if self.configs['to_greyscale'] is True and is_greyscale(self.img) is False:
             self.img = self.img.convert("L")
 
@@ -361,6 +361,28 @@ def resize_along_dim(im, dim, weights, field_of_view):
 
     # Finally we swap back the axes to the original order
     return np.swapaxes(tmp_out_im, dim, 0)
+
+
+def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
+    """
+    Use back projection technique to reduce super resolution error
+    :param y_sr:
+    :param y_lr:
+    :param down_kernel:
+    :param up_kernel:
+    :param sf:
+    :return:
+    """
+    y_sr_low_res_projection = resize_tensor(y_sr,
+                                            scale_factor=1.0/sf,
+                                            output_shape=y_lr.shape,
+                                            kernel=down_kernel)
+    y_sr += resize_tensor(y_lr - y_sr_low_res_projection,
+                          scale_factor=sf,
+                          output_shape=y_sr.shape,
+                          kernel=up_kernel)
+
+    return torch.clamp(y_sr, 0, 1)
 
 
 def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
