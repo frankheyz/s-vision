@@ -4,16 +4,20 @@ import time
 
 import numpy as np
 import torch
+from PIL import Image
 from torch import nn
 from torch import optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from configs import configs as conf
 from collections import OrderedDict
 
 from utils import imresize
 from utils import resize_tensor
+
+from matplotlib import pyplot as plt
 
 
 class ZVision(nn.Module):
@@ -72,7 +76,6 @@ class ZVision(nn.Module):
         xb_hi_res = resize_tensor(
             torch.squeeze(xb),  # keep x,y dimension only
             scale_factor=self.scale_factor,
-            output_shape=self.configs['crop_size'],
             kernel=self.configs['upscale_method']
         )
 
@@ -84,14 +87,23 @@ class ZVision(nn.Module):
             xb_mid = F.relu(self.layers[str(layer)](xb_mid))
 
         # output the last layer
+        # todo add residue
         xb_last = self.layers[str(self.configs['kernel_depth'] - 1)](xb_mid)
 
         return xb_last
 
-    def initialize(self):
-        # weight
-        # counters
-        # down scale ground truth to the intermediate sf size
+    def back_projection(self):
+        img_path = os.path.join(self.configs['image_path'], self.configs['images'])
+        input_img = Image.open(img_path)
+        input_img_tensor = transforms.ToTensor()(input_img).unsqueeze_(0)
+        if self.dev.type == 'cuda':
+            input_img_tensor = input_img_tensor.to('cuda')
+
+        network_out = self.forward(input_img_tensor)
+
+        return network_out
+
+    def base_change(self):
         pass
 
     def learn_rate_policy(self):
@@ -132,9 +144,10 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
         print("Start training on GPU.")
 
     start_time = time.time()
-
+    loss_values = []
     for epoch in range(configs['max_epochs']):
         model.train()
+
         for _, sample in enumerate(train_dl):
             xb = sample['img_lr'].to(device)
             yb = sample['img'].to(device)
@@ -149,6 +162,7 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
                     for _, sample in enumerate(valid_dl)]
             )
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+        loss_values.append(val_loss)
 
         if epoch % configs['show_loss'] == 0:
             print("epoch: {epoch}/{epochs}  validation loss: {loss:.6f}".format(
@@ -166,6 +180,12 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
             os.makedirs(save_path, exist_ok=True)
             # save the model state dict
             torch.save(model.state_dict(), save_path + configs['model_name'])
+
+    plt.plot(loss_values)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Losses')
+    plt.show()
 
 
 def loss_batch(model, loss_func, xb, yb, opt=None):
