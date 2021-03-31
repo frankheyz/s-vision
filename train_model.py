@@ -69,8 +69,9 @@ def train_model(configs=conf):
         device=dev,
     )
 
+    return model
+
 
 if __name__ == "__main__":
-    train_model()
-
-    # todo better tensor np conversion
+    m = train_model()
+    m.back_projection()
