@@ -2,20 +2,23 @@
 import os
 import time
 
-import numpy as np
 import torch
+import numpy as np
+
 from PIL import Image
 from torch import nn
 from torch import optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from torchvision import transforms
+from torch.utils.data import DataLoader
 
 from configs import configs as conf
 from collections import OrderedDict
 
 from utils import imresize
 from utils import resize_tensor
+from utils import is_greyscale
+from utils import back_project_tensor
 
 from matplotlib import pyplot as plt
 
@@ -23,6 +26,9 @@ from matplotlib import pyplot as plt
 class ZVision(nn.Module):
     base_sf = 1.0
     dev = None
+    scale_factor = None
+    scale_factor_idx = 0
+    final_output = None
 
     def __init__(self, configs=conf):
         super(ZVision, self).__init__()
@@ -92,16 +98,77 @@ class ZVision(nn.Module):
 
         return xb_last
 
-    def back_projection(self):
+    def output(self):
+        # load image
         img_path = os.path.join(self.configs['image_path'], self.configs['images'])
         input_img = Image.open(img_path)
-        input_img_tensor = transforms.ToTensor()(input_img).unsqueeze_(0)
+        # convert it to greyscale
+        if self.configs['to_greyscale'] is True and is_greyscale(input_img) is False:
+            input_img = input_img.convert("L")
+        # convert it to tensor
+        input_img_tensor = transforms.ToTensor()(input_img)
         if self.dev.type == 'cuda':
             input_img_tensor = input_img_tensor.to('cuda')
 
-        network_out = self.forward(input_img_tensor)
+        # todo handle 3d case
+        outputs = []
+        # augmentation using rotation and flipping
+        in_dims = input_img_tensor.shape.__len__()
+        for i in range(0, 1 + 7 * self.configs['output_flip'], 1 + int(self.scale_factor[0] != self.scale_factor[1])):
+            # Rotate 90*i degrees and flip if i>=4
+            if i < 4:
+                processed_input = torch.rot90(input_img_tensor, i, [in_dims - 2, in_dims - 1])
+            else:
+                in_dims = torch.squeeze(input_img_tensor).shape.__len__()
+                processed_input = torch.fliplr(
+                    torch.rot90(
+                        torch.squeeze(input_img_tensor), i, [in_dims - 2, in_dims - 1]
+                    ) # todo 3d rotation
+                )
+                # undo squeeze
+                processed_input.unsqueeze_(0).unsqueeze_(0)
 
-        return network_out
+            # run forward propagation
+            network_out = self.forward(processed_input)
+            # undo processing
+            out_dims = network_out.shape.__len__()
+            if i < 4:
+                network_out = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
+            else:
+                out_dims = torch.squeeze(network_out).shape.__len__()
+                network_out = torch.rot90(
+                    torch.fliplr(torch.squeeze(network_out)),  # todo 3d flip
+                    -i,
+                    [out_dims - 2, out_dims - 1]
+                )
+
+            # apply back projection
+            for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
+                network_out = back_project_tensor(
+                    y_sr=torch.squeeze(network_out),
+                    y_lr=torch.squeeze(input_img_tensor),
+                    down_kernel=self.configs['downscale_method'],
+                    up_kernel=self.configs['upscale_method'],
+                    sf=self.scale_factor
+                )
+
+            outputs.append(network_out)
+
+        intermediate_network_out = torch.median(torch.stack(outputs), 0).values
+
+        # apply back projection for the intermediate result
+        for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
+            intermediate_network_out = back_project_tensor(
+                    y_sr=intermediate_network_out,
+                    y_lr=torch.squeeze(input_img_tensor),
+                    down_kernel=self.configs['downscale_method'],
+                    up_kernel=self.configs['upscale_method'],
+                    sf=self.scale_factor
+                )
+
+        self.final_output = intermediate_network_out
+
+        return self.final_output
 
     def base_change(self):
         pass
