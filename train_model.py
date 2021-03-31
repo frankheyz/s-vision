@@ -74,4 +74,10 @@ def train_model(configs=conf):
 
 if __name__ == "__main__":
     m = train_model()
-    m.back_projection()
+    result = m.output()
+    import matplotlib.pyplot as plt
+    plt.imshow(result.cpu().detach().numpy(), cmap='gray')
+    plt.show()
+    pass
+    # todo support input kernels
+    # todo gradual scale factor
