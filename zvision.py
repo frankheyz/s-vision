@@ -11,6 +11,7 @@ from torch import optim
 import torch.nn.functional as F
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 
 from configs import configs as conf
 from collections import OrderedDict
@@ -168,7 +169,22 @@ class ZVision(nn.Module):
 
         self.final_output = intermediate_network_out
 
+        self.save_output_image()
+
         return self.final_output
+
+    def save_output_image(self):
+        # save output
+        if self.configs['save_output_img'] is True:
+            out_path = os.path.join(
+                self.configs['save_path'],
+                self.configs['output_img_dir']
+            )
+            os.makedirs(out_path, exist_ok=True)
+            out_name = self.configs['images'][:-4] \
+                       + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
+                       + self.configs['output_img_fmt']
+            save_image(self.final_output, os.path.join(out_path, out_name))
 
     def base_change(self):
         pass

@@ -51,8 +51,9 @@ configs = {
     "save_path": './results/' + time.strftime("%Y%m%d_%H_%M_%S", time.localtime()) + "/",
     "model_dir": 'model/',
     "checkpoint_dir": 'checkpoint/',
+    "save_output_img": True,
     "output_img_dir": 'output_image/',
-    "output_img_name": 'output_img.png',
+    "output_img_fmt": '.jpg',
     "model_name": "model.pt"
 }
 
