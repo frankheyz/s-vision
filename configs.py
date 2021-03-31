@@ -22,7 +22,10 @@ configs = {
     "rotation_angles": [90, 180, 270],
     "horizontal_flip_probability": 0.5,
     "vertical_flip_probability": 0.5,
+    "output_flip": True,
+    "back_projection_iters": [2],
     "upscale_method": 'cubic',
+    "downscale_method": 'cubic',
 
     # training hyper-parameters
     "use_gpu": True,
