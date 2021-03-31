@@ -6,8 +6,8 @@ import time
 """
 configs = {
     # data loading configs
-    "image_path": "/home/heyz/code/zsdecon/images/",
-    "images": 'yj_blurred.jpg',
+    "image_path": "/home/heyz/code/z-vision/images/",
+    "images": 'yj_256.jpg',
     "data_format": 'jpg',
     "to_greyscale": True,
     "batch_size": 32,
