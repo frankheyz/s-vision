@@ -54,6 +54,8 @@ configs = {
     "save_output_img": True,
     "output_img_dir": 'output_image/',
     "output_img_fmt": '.jpg',
-    "model_name": "model.pt"
+    "model_name": "model.pt",
+    "save_configs": True,
+    "output_configs_dir": 'output_configs/'
 }
 

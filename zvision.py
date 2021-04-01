@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import time
 
@@ -169,12 +170,12 @@ class ZVision(nn.Module):
 
         self.final_output = intermediate_network_out
 
-        self.save_output_image()
+        self.save_outputs()
 
         return self.final_output
 
-    def save_output_image(self):
-        # save output
+    def save_outputs(self):
+        # save output img
         if self.configs['save_output_img'] is True:
             out_path = os.path.join(
                 self.configs['save_path'],
@@ -185,6 +186,20 @@ class ZVision(nn.Module):
                        + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
                        + self.configs['output_img_fmt']
             save_image(self.final_output, os.path.join(out_path, out_name))
+
+        if self.configs['save_configs'] is True:
+            out_path = os.path.join(
+                self.configs['save_path'],
+                self.configs['output_configs_dir']
+            )
+            os.makedirs(out_path, exist_ok=True)
+            # save(copy) config for reproducibility
+            with open(out_path + "configs.json", 'w') as f:
+                json.dump(self.configs, f, indent=4)
+
+    def evaluate(self):
+        # mse, ssim etc.
+        pass
 
     def base_change(self):
         pass
