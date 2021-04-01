@@ -24,6 +24,9 @@ from utils import back_project_tensor
 
 from matplotlib import pyplot as plt
 
+from skimage.metrics import mean_squared_error
+from skimage.metrics import structural_similarity as ssim
+
 
 class ZVision(nn.Module):
     base_sf = 1.0
@@ -131,7 +134,10 @@ class ZVision(nn.Module):
                 processed_input.unsqueeze_(0).unsqueeze_(0)
 
             # run forward propagation
-            network_out = self.forward(processed_input)
+            self.eval()
+
+            with torch.no_grad():
+                network_out = self.__call__(processed_input)
             # undo processing
             out_dims = network_out.shape.__len__()
             if i < 4:
@@ -199,7 +205,13 @@ class ZVision(nn.Module):
 
     def evaluate(self):
         # mse, ssim etc.
-        pass
+        # load reference image
+        ref_path = os.path.join(self.configs['image_path'], self.configs['reference_img'])
+        ref_img = Image.open(ref_path)
+
+        # todo format
+        sr_mse = mean_squared_error(ref_img, self.final_output)
+        sr_ssim = ssim(ref_img, self.final_output)
 
     def base_change(self):
         pass
