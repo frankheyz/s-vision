@@ -22,6 +22,7 @@ from utils import resize_tensor
 from utils import is_greyscale
 from utils import back_project_tensor
 
+from tabulate import tabulate
 from matplotlib import pyplot as plt
 
 from skimage.metrics import mean_squared_error
@@ -203,15 +204,26 @@ class ZVision(nn.Module):
             with open(out_path + "configs.json", 'w') as f:
                 json.dump(self.configs, f, indent=4)
 
-    def evaluate(self):
+    def evaluate_error(self):
         # mse, ssim etc.
+        # format output
+        final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
         ref_path = os.path.join(self.configs['image_path'], self.configs['reference_img'])
-        ref_img = Image.open(ref_path)
-
+        ref_img = Image.open(ref_path).convert('L')
+        ref_img = np.asarray(ref_img).astype(final_output_np.dtype)
+        ref_img_normalized = ref_img/np.amax(ref_img)
         # todo format
-        sr_mse = mean_squared_error(ref_img, self.final_output)
-        sr_ssim = ssim(ref_img, self.final_output)
+        sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
+        sr_ssim = ssim(ref_img_normalized, final_output_np)
+
+        print(
+            tabulate(
+                [["MSE", "{:.6f}".format(sr_mse)], ["SSIM", "{:.6f}".format(sr_ssim)]],
+                headers=['Errors', 'Value'],
+                tablefmt='grid'
+            )
+        )
 
     def base_change(self):
         pass
