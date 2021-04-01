@@ -8,7 +8,7 @@ configs = {
     # data loading configs
     "image_path": "/home/heyz/code/z-vision/images/",
     "images": 'yj_256.jpg',
-    "reference_img": 'yj_1024.jpg',
+    "reference_img": 'yj_512.jpg',
     "data_format": 'jpg',
     "to_greyscale": True,
     "batch_size": 32,
@@ -32,7 +32,7 @@ configs = {
     "use_gpu": True,
     "learning_rate": 1e-4,
     "momentum": 0.9,
-    "max_epochs": 1000,
+    "max_epochs": 100,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,
