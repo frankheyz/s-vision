@@ -39,6 +39,7 @@ class ZVision(nn.Module):
     def __init__(self, configs=conf):
         super(ZVision, self).__init__()
         self.configs = configs
+        self.output_img_path = None
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
 
         self.conv_first = nn.Conv2d(
@@ -106,8 +107,7 @@ class ZVision(nn.Module):
 
     def output(self):
         # load image
-        img_path = os.path.join(self.configs['image_path'], self.configs['images'])
-        input_img = Image.open(img_path)
+        input_img = Image.open(self.configs['image_path'])
         # convert it to greyscale
         if self.configs['to_greyscale'] is True and is_greyscale(input_img) is False:
             input_img = input_img.convert("L")
@@ -189,10 +189,12 @@ class ZVision(nn.Module):
                 self.configs['output_img_dir']
             )
             os.makedirs(out_path, exist_ok=True)
-            out_name = self.configs['images'][:-4] \
+            img_name = self.configs["image_path"].split('/')[-1]
+            out_name = img_name[:-4] \
                        + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
                        + self.configs['output_img_fmt']
-            save_image(self.final_output, os.path.join(out_path, out_name))
+            self.output_img_path = os.path.join(out_path, out_name)
+            save_image(self.final_output, self.output_img_path)
 
         if self.configs['save_configs'] is True:
             out_path = os.path.join(
@@ -209,7 +211,7 @@ class ZVision(nn.Module):
         # format output
         final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
-        ref_path = os.path.join(self.configs['image_path'], self.configs['reference_img'])
+        ref_path = self.configs['reference_img_path']
         ref_img = Image.open(ref_path).convert('L')
         ref_img = np.asarray(ref_img).astype(final_output_np.dtype)
         ref_img_normalized = ref_img/np.amax(ref_img)

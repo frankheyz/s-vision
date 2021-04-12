@@ -6,9 +6,8 @@ import time
 """
 configs = {
     # data loading configs
-    "image_path": "/home/heyz/code/z-vision/images/",
-    "images": 'yj_256.jpg',
-    "reference_img": 'yj_512.jpg',
+    "image_path": "/home/heyz/code/z-vision/images/yj_256.jpg",
+    "reference_img_path": '/home/heyz/code/z-vision/images/yj_1024.jpg',
     "data_format": 'jpg',
     "to_greyscale": True,
     "batch_size": 32,
@@ -30,9 +29,10 @@ configs = {
 
     # training hyper-parameters
     "use_gpu": True,
+    "serial_training": 2,
     "learning_rate": 1e-4,
     "momentum": 0.9,
-    "max_epochs": 100,
+    "max_epochs": 500,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,

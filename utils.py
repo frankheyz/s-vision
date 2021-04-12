@@ -20,7 +20,7 @@ import torchvision.transforms.functional as TF
 from scipy.ndimage import filters, measurements, interpolation
 
 
-class SilverDataset(Dataset):
+class ZVisionDataset(Dataset):
     """
     Super-resolution dataset
     """
@@ -33,14 +33,12 @@ class SilverDataset(Dataset):
         :param transform:
         """
         self.configs = configs
-        self.root_dir = configs['image_path']
-        self.input_imgs = configs['images']
         self.transform = transform
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
         self.kernel = configs['kernel']
 
         # load image
-        img_path = os.path.join(self.root_dir, self.input_imgs)
+        img_path = configs['image_path']
         img = Image.open(img_path)
         self.img = img
         # img = (img / img.max()).astype(np.float32)
@@ -488,7 +486,7 @@ if __name__ == "__main__":
         # transforms.Normalize(mean=img_mean, std=img_std)
     ])
 
-    data_set = SilverDataset(
+    data_set = ZVisionDataset(
         configs=configs, transform=composed_transform
     )
 

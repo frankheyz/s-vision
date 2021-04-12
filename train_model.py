@@ -4,12 +4,29 @@ from torch import nn
 from zvision import fit
 from zvision import get_data
 from zvision import get_model
-from utils import SilverDataset
+from utils import ZVisionDataset
 from utils import RotationTransform
 from configs import configs as conf
 from torchvision import transforms
 
 
+def serial_training(*args, **kwargs):
+    def decorator(func):
+        serial_count = kwargs['configs']['serial_training']
+        # train for different scales
+        for i in range(serial_count):
+            trained_model = func(*args, **kwargs)
+            trained_model.output()
+            new_training_img = trained_model.output_img_path
+            # update config
+            if i < serial_count - 1:
+                kwargs['configs']['image_path'] = new_training_img
+
+        return trained_model
+    return decorator
+
+
+@serial_training(configs=conf)
 def train_model(configs=conf):
     # set random seed
     torch.manual_seed(configs['manual_seed_num'])
@@ -31,14 +48,14 @@ def train_model(configs=conf):
         transforms.ToTensor()
         # transforms.Normalize(mean=img_mean, std=img_std)
     ])
-
+    # todo optimize loading of the input for data parallelism
     # define train data set and data loader
-    train_ds = SilverDataset(
+    train_ds = ZVisionDataset(
         configs=configs, transform=composed_transform
     )
 
     # define train data set and data loader
-    valid_ds = SilverDataset(
+    valid_ds = ZVisionDataset(
         configs=configs, transform=composed_transform
     )
 
@@ -52,7 +69,7 @@ def train_model(configs=conf):
     # todo Data parallel
     if torch.cuda.device_count() > 2:
         print("Using", torch.cuda.device_count(), "GPUs.")
-        model = nn.parallel.DistributedDataParallel(model)
+        model = nn.DataParallel(model)
 
     model.to(device=dev)
     if dev.type == 'cuda':
@@ -73,7 +90,7 @@ def train_model(configs=conf):
 
 
 if __name__ == "__main__":
-    m = train_model()
+    m = train_model
     result = m.output()
     m.evaluate_error()
     import matplotlib.pyplot as plt
@@ -81,4 +98,3 @@ if __name__ == "__main__":
     plt.show()
     pass
     # todo support input kernels
-    # todo gradual scale factor
