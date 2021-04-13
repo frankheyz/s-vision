@@ -8,6 +8,7 @@ import random
 import numpy as np
 from skimage import io
 from PIL import Image
+from scipy.io import loadmat
 from PIL.ImageStat import Stat
 from os import listdir
 from configs import configs
@@ -35,7 +36,9 @@ class ZVisionDataset(Dataset):
         self.configs = configs
         self.transform = transform
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
-        self.kernel = configs['kernel']
+        # For resize image, use kernel provided in .mat file or one of the default kernel
+        self.kernel = loadmat(self.configs['kernel_path'])['Kernel'] if self.configs['provide_kernel'] is True \
+            else self.configs['upscale_method']
 
         # load image
         img_path = configs['image_path']
@@ -64,9 +67,12 @@ class ZVisionDataset(Dataset):
             img = self.img
 
         # create low res image
+        img_lr = self.high_res_2_low_res(img)
+        # add the dimension for batch size
+        img_lr = torch.from_numpy(img_lr).unsqueeze(0)
         sample = {
             "img": img,
-            "img_lr": self.high_res_2_low_res(img)
+            "img_lr": img_lr
         }
 
         return sample
@@ -390,16 +396,16 @@ def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
 
     # First run a correlation (convolution with flipped kernel)
     out_im = np.zeros_like(im)
-    if len(scale_factor) == 2:
-        for channel in range(np.ndim(im)):
-            out_im[:, :, channel] = filters.correlate(im[:, :, channel], kernel)
-    else:
-        out_im = filters.correlate(im, kernel)
+    # if len(scale_factor) == 2:
+    #     for channel in range(np.ndim(im)):
+    #         out_im[:, :, channel] = filters.correlate(im[:, :, channel], kernel)
+    # else:
+    out_im = filters.correlate(im, kernel)
 
     # Then subsample and return
     if len(scale_factor) == 2:
         return out_im[np.round(np.linspace(0, im.shape[0] - 1 / scale_factor[0], output_shape[0])).astype(int)[:, None],
-                      np.round(np.linspace(0, im.shape[1] - 1 / scale_factor[1], output_shape[1])).astype(int), :]
+                      np.round(np.linspace(0, im.shape[1] - 1 / scale_factor[1], output_shape[1])).astype(int)]
     else:
         return out_im[
                 # 1st dim

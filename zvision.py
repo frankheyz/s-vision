@@ -5,6 +5,7 @@ import time
 
 import torch
 import numpy as np
+from scipy.io import loadmat
 
 from PIL import Image
 from torch import nn
@@ -17,7 +18,6 @@ from torchvision.utils import save_image
 from configs import configs as conf
 from collections import OrderedDict
 
-from utils import imresize
 from utils import resize_tensor
 from utils import is_greyscale
 from utils import back_project_tensor
@@ -41,6 +41,7 @@ class ZVision(nn.Module):
         self.configs = configs
         self.output_img_path = None
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
+        self.upscale_method = self.configs['upscale_method']
 
         self.conv_first = nn.Conv2d(
             in_channels=configs['input_channel_num'],
@@ -87,13 +88,13 @@ class ZVision(nn.Module):
     def forward(self, xb):
         # interpolate xb to high resolution
         xb_hi_res = resize_tensor(
-            torch.squeeze(xb),  # keep x,y dimension only
+            torch.squeeze(xb),  # keep x,y dimensions only
             scale_factor=self.scale_factor,
-            kernel=self.configs['upscale_method']
+            kernel=self.upscale_method
         )
 
         # TODO check which activation function is better
-        xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0)
+        xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0)  # add non-x,y dimensions
         xb_mid = F.relu(self.layers[str(0)](xb_hi_res))
 
         for layer in range(1, self.configs['kernel_depth'] - 1):
@@ -215,7 +216,7 @@ class ZVision(nn.Module):
         ref_img = Image.open(ref_path).convert('L')
         ref_img = np.asarray(ref_img).astype(final_output_np.dtype)
         ref_img_normalized = ref_img/np.amax(ref_img)
-        # todo format
+
         sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
         sr_ssim = ssim(ref_img_normalized, final_output_np)
 
@@ -263,9 +264,12 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
         :return:
     """
     if device == torch.device("cpu"):
-        print("Start training on CPU.")
+        print("**** Start training on CPU. ****")
     else:
-        print("Start training on GPU.")
+        print("**** Start training on GPU. ****")
+
+    if configs['provide_kernel']:
+        print("**** Downscale kernel: ", configs['kernel_path'], '****')
 
     start_time = time.time()
     loss_values = []

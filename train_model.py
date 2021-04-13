@@ -12,6 +12,7 @@ from torchvision import transforms
 
 def serial_training(*args, **kwargs):
     def decorator(func):
+        trained_model = None
         serial_count = kwargs['configs']['serial_training']
         # train for different scales
         for i in range(serial_count):
@@ -97,4 +98,4 @@ if __name__ == "__main__":
     plt.imshow(result.cpu().detach().numpy(), cmap='gray')
     plt.show()
     pass
-    # todo support input kernels
+

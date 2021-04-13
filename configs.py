@@ -6,8 +6,9 @@ import time
 """
 configs = {
     # data loading configs
-    "image_path": "/home/heyz/code/z-vision/images/yj_256.jpg",
-    "reference_img_path": '/home/heyz/code/z-vision/images/yj_1024.jpg',
+    "image_path": "./images/yj_256.jpg",
+    "reference_img_path": './images/yj_1024.jpg',
+    "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_greyscale": True,
     "batch_size": 32,
@@ -16,6 +17,7 @@ configs = {
     # data preprocessing configs
     "manual_seed_num": 1,
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
+    "provide_kernel": True,
     "kernel": 'cubic',
     "crop_size": (256, 256),
     "noise_std": 0.0,
@@ -32,7 +34,7 @@ configs = {
     "serial_training": 2,
     "learning_rate": 1e-4,
     "momentum": 0.9,
-    "max_epochs": 500,
+    "max_epochs": 100,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,
