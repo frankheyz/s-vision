@@ -1,23 +1,25 @@
 # -*- coding: utf-8 -*-
 import time
+import copy
 
 """
    Configuration file for the network
 """
 configs = {
     # data loading configs
+    # "image_path": "./images/whole_af_x_small_5x_z2.tif",
     "image_path": "./images/yj_256.jpg",
     "reference_img_path": './images/yj_1024.jpg',
     "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
-    "to_greyscale": True,
+    "to_grayscale": True,
     "batch_size": 32,
     "num_workers": 0,
 
     # data preprocessing configs
     "manual_seed_num": 1,
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
-    "provide_kernel": True,
+    "provide_kernel": False,
     "kernel": 'cubic',
     "crop_size": (256, 256),
     "noise_std": 0.0,
@@ -34,7 +36,7 @@ configs = {
     "serial_training": 2,
     "learning_rate": 1e-4,
     "momentum": 0.9,
-    "max_epochs": 100,
+    "max_epochs": 50,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,
@@ -45,7 +47,7 @@ configs = {
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
     "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
-    "padding_mode": 'reflect',
+    "padding_mode": 'zeros',
     "time_lapsed": 100,
 
     # save configs
@@ -62,3 +64,13 @@ configs = {
     "output_configs_dir": 'output_configs/'
 }
 
+configs3D = copy.deepcopy(configs)
+configs3D.update(
+    {
+        "image_path": "./images/whole_af_x_small_5x_z2.tif",
+        "crop_size": (64, 64, 10),
+        "scale_factor": [2, 2, 2],
+        "kernel_stride": (1, 1, 1),
+        "padding": (1, 1, 1),
+    }
+)

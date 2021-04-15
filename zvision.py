@@ -5,6 +5,7 @@ import time
 
 import torch
 import numpy as np
+import torchio as tio
 from scipy.io import loadmat
 
 from PIL import Image
@@ -12,12 +13,15 @@ from torch import nn
 from torch import optim
 import torch.nn.functional as F
 from torchvision import transforms
+from utils import RotationTransform
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 from configs import configs as conf
 from collections import OrderedDict
 
+from utils import read_image_as_tensor
+from utils import RandomCrop3D
 from utils import resize_tensor
 from utils import is_greyscale
 from utils import back_project_tensor
@@ -43,7 +47,9 @@ class ZVision(nn.Module):
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
         self.upscale_method = self.configs['upscale_method']
 
-        self.conv_first = nn.Conv2d(
+        # select 2D or 3D kernel
+        self.kernel_selected = self.kernel_selector()
+        self.conv_first = self.kernel_selected(
             in_channels=configs['input_channel_num'],
             out_channels=configs['kernel_channel_num'],
             kernel_size=configs['kernel_size'],
@@ -52,7 +58,7 @@ class ZVision(nn.Module):
             padding=configs['padding'],
             padding_mode=configs['padding_mode']
         )
-        self.conv_mid = nn.Conv2d(
+        self.conv_mid = self.kernel_selected(
             in_channels=configs['kernel_channel_num'],
             out_channels=configs['kernel_channel_num'],
             kernel_size=configs['kernel_size'],
@@ -61,7 +67,7 @@ class ZVision(nn.Module):
             padding=configs['padding'],
             padding_mode=configs['padding_mode']
         )
-        self.conv_last = nn.Conv2d(
+        self.conv_last = self.kernel_selected(
             in_channels=configs['kernel_channel_num'],
             out_channels=configs['output_channel_num'],
             kernel_size=configs['kernel_size'],
@@ -84,6 +90,15 @@ class ZVision(nn.Module):
         # the last layers
         layers[str(self.configs['kernel_depth'] - 1)] = self.conv_last
         self.layers = layers
+
+    def kernel_selector(self):
+        # determine if it is 2D or 3D using crop size
+        if len(self.configs['crop_size']) == 2:
+            return nn.Conv2d
+        elif len(self.configs['crop_size']) == 3:
+            return nn.Conv3d
+        else:
+            raise ValueError('Incorrect crop size. Please input a list of 2 or 3 elements.')
 
     def forward(self, xb):
         # interpolate xb to high resolution
@@ -110,7 +125,7 @@ class ZVision(nn.Module):
         # load image
         input_img = Image.open(self.configs['image_path'])
         # convert it to greyscale
-        if self.configs['to_greyscale'] is True and is_greyscale(input_img) is False:
+        if self.configs['to_grayscale'] is True and is_greyscale(input_img) is False:
             input_img = input_img.convert("L")
         # convert it to tensor
         input_img_tensor = transforms.ToTensor()(input_img)
@@ -236,7 +251,7 @@ class ZVision(nn.Module):
 
 
 def get_model(configs=conf):
-    model = ZVision()
+    model = ZVision(configs=configs)
     return model, optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
 
@@ -248,6 +263,41 @@ def get_data(train_ds, valid_ds, configs=conf):
         DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=num_work),
         DataLoader(valid_ds, batch_size=bs * 2, num_workers=num_work),
     )
+
+
+def get_transform(configs):
+    # 2D case
+    if len(configs['crop_size']) == 2:
+        # add rotations
+        rotation = RotationTransform(angles=configs['rotation_angles'])
+        # compose transforms
+        # todo 3d transform for crop etc.
+        composed_transform = transforms.Compose([
+            transforms.RandomCrop(configs['crop_size']),
+            transforms.RandomHorizontalFlip(p=configs['horizontal_flip_probability']),
+            transforms.RandomVerticalFlip(p=configs['vertical_flip_probability']),
+            rotation,
+            transforms.ToTensor()
+            # transforms.Normalize(mean=img_mean, std=img_std)
+        ])
+    elif len(configs['crop_size']) == 3:  # 3D case
+        (crop_x, crop_y, crop_z) = configs['crop_size']
+        random_crop_3d = RandomCrop3D(crop_size=(crop_x, crop_y, crop_z))
+        flips = tio.RandomFlip(axes=['LR', 'AP', 'IS'])
+        # rotate about the z-axis
+        rotations_dict = {
+            tio.RandomAffine(scales=(1, 1, 1, 1, 1, 1), degrees=(0, 0, 0, 0, 90, 90)): 1 / 3,
+            tio.RandomAffine(scales=(1, 1, 1, 1, 1, 1), degrees=(0, 0, 0, 0, 90 * 2, 90 * 2)): 1 / 3,
+            tio.RandomAffine(scales=(1, 1, 1, 1, 1, 1), degrees=(0, 0, 0, 0, 90 * 3, 90 * 3)): 1 / 3,
+        }
+        rotation = tio.OneOf(rotations_dict)
+        transforms_list = [random_crop_3d, flips, rotation]
+        composed_transform = tio.Compose(transforms=transforms_list)
+
+    else:
+        raise Exception('Crop size invalid, please input 2D or 3D array.')
+
+    return composed_transform
 
 
 def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device("cpu")):

@@ -4,6 +4,8 @@ import json
 from math import pi
 from shutil import copyfile
 import torch
+import torchio
+import torchio as tio
 import random
 import numpy as np
 from skimage import io
@@ -42,8 +44,11 @@ class ZVisionDataset(Dataset):
 
         # load image
         img_path = configs['image_path']
-        img = Image.open(img_path)
+        img = read_image_as_tensor(img_path, to_grayscale=self.configs['to_grayscale'])
+        # img = Image.open(img_path)
+        # img = img.convert('L')
         self.img = img
+
         # img = (img / img.max()).astype(np.float32)
         # self.img = torch.from_numpy(img)
 
@@ -56,20 +61,27 @@ class ZVisionDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        # convert to greyscale if it is required
-        if self.configs['to_greyscale'] is True and is_greyscale(self.img) is False:
-            self.img = self.img.convert("L")
+        # use torio to perform transformations
+        if isinstance(self.img, torch.Tensor) and len(self.img.shape) == 3:
+            self.img = self.img.unsqueeze(0)
+            self.img = tio.Subject(
+                sample=tio.ScalarImage(tensor=self.img)
+            )
 
         # transform input image for augmentation
         if self.transform:
-            img = self.transform(self.img)
+            img = self.transform(self.img)  # note self.img has to be PIL or TIO subject
         else:
             img = self.img
+
+        # extract data from subject
+        if isinstance(self.img, torchio.data.subject.Subject):
+            img = img['sample'][tio.DATA]
 
         # create low res image
         img_lr = self.high_res_2_low_res(img)
         # add the dimension for batch size
-        img_lr = torch.from_numpy(img_lr).unsqueeze(0)
+        img_lr = img_lr.unsqueeze(0)
         sample = {
             "img": img,
             "img_lr": img_lr
@@ -88,13 +100,55 @@ class ZVisionDataset(Dataset):
         return lr_son_with_noise
 
 
-def is_greyscale(pil_img):
-    pil_img_rgb = pil_img.convert('RGB')
-    pil_img_rgb_np = np.array(pil_img_rgb)
-    pil_img_np = np.array(pil_img)
+class RandomCrop3D:
+    def __init__(self, crop_size: tuple):
+        self.crop_size = crop_size
 
-    if pil_img_np.shape == pil_img_rgb_np.shape:
-        if np.sum(pil_img_np - pil_img_rgb_np) == 0:
+    def __call__(self, input_tensor):
+        sampler = tio.data.UniformSampler(self.crop_size)
+        patch = sampler(input_tensor, 1)
+
+        return list(patch)[0]
+
+
+def read_image_as_tensor(img_path, to_grayscale=True):
+    # load image
+    if img_path.endswith('.tif'):
+        img = io.imread(img_path)
+        if len(img.shape) == 3 and img.shape[0] >= 1:
+            img = np.moveaxis(img, 0, -1)  # move the z-axis to the last dimension
+        # convert numpy img to tensor
+        img = torch.from_numpy(img)
+        # todo normalization
+        img = img / torch.max(img)
+    else:
+        img = Image.open(img_path)
+
+    if to_grayscale and 'convert' in dir(img):
+        img = img.convert('L')
+
+    # # convert to tensor
+    # if not isinstance(img, torch.Tensor):
+    #     img = transforms.ToTensor()(img).squeeze()
+
+    return img
+
+
+def is_greyscale(in_img):
+    # todo verify this function
+    # assume ndarray is gray scale
+    if isinstance(in_img, np.ndarray) or isinstance(in_img, torch.Tensor):
+        return True
+
+    if isinstance(in_img, tio.data.subject.Subject):
+        return True
+
+    in_img_rgb = in_img.convert('RGB')
+    in_img_rgb_np = np.array(in_img_rgb)
+    in_img_np = np.array(in_img)
+
+    if in_img_np.shape == in_img_rgb_np.shape:
+        if np.sum(in_img_np - in_img_rgb_np) == 0:
             return False
         else:
             return True
@@ -108,9 +162,12 @@ def resize_tensor(
         output_shape=None,
         kernel=None,
         antialiasing=True,
-        kernel_shift_flag=False,
-        three_d_image=False
+        kernel_shift_flag=False
         ):
+    if len(tensor_in.shape) == 3:
+        three_d_image = True
+    else:
+        three_d_image = False
     # First standardize values and fill missing arguments (if needed) by deriving scale from output shape or vice versa
     scale_factor, output_shape = fix_scale_and_size(tuple(tensor_in.shape), output_shape, scale_factor, three_d_image)
 
@@ -318,6 +375,7 @@ def contributions(in_length, out_length, scale, kernel, kernel_width, antialiasi
 def resize_tensor_along_dim(tenser_in, dim, weights, field_of_view):
     # To be able to act on each dim, we swap so that dim 0 is the wanted dim to resize
     tmp_tensor_in = torch.transpose(tenser_in, dim, 0)
+    unchanged_dimensions_shape = list(tmp_tensor_in.shape)[1:]
 
     # We add singleton dimensions to the weight matrix so we can multiply it with the big tensor we get for
     # tmp_im[field_of_view.T], (bsxfun style)
@@ -331,15 +389,23 @@ def resize_tensor_along_dim(tenser_in, dim, weights, field_of_view):
     # same number
     field_of_view = field_of_view.astype('int32')
     new_dims = field_of_view.T.shape[0]
-    new_tensor_shape = (new_dims, field_of_view.T.shape[1], tmp_tensor_in.shape[dim])
+    leading_dimensions_shape = [new_dims, field_of_view.T.shape[1]]
+    new_tensor_shape = tuple(leading_dimensions_shape + unchanged_dimensions_shape)
+    # new_tensor_shape = (new_dims, field_of_view.T.shape[1], tmp_tensor_in.shape[dim])
     if tmp_tensor_in.device.type == 'cpu':
         new_tensor = torch.zeros(new_tensor_shape)
     else:
         weights = torch.from_numpy(weights).float().to(tmp_tensor_in.device)
-        new_tensor = torch.cuda.FloatTensor(new_dims, field_of_view.T.shape[1], tmp_tensor_in.shape[dim]).fill_(0)
+        new_tensor = torch.cuda.FloatTensor(*new_tensor_shape).fill_(0)
 
-    for i in range(new_dims):
-        new_tensor[i,:,:] = tmp_tensor_in[field_of_view.T[i]]
+    if len(new_tensor.shape) == 3:
+        for i in range(new_dims):
+            new_tensor[i, :, :] = tmp_tensor_in[field_of_view.T[i]]
+    elif len(new_tensor.shape) == 4:
+        for i in range(new_dims):
+            new_tensor[i, :, :, :] = tmp_tensor_in[field_of_view.T[i]]
+    else:
+        raise ValueError('Incorrect tensor dimensions. Please check the dimensions of the new tensor.')
 
     tmp_out_im = torch.sum(new_tensor * weights, dim=0)
 

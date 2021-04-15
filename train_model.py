@@ -4,14 +4,16 @@ from torch import nn
 from zvision import fit
 from zvision import get_data
 from zvision import get_model
+from zvision import get_transform
 from utils import ZVisionDataset
 from utils import RotationTransform
 from configs import configs as conf
+from configs import configs3D as conf3D
 from torchvision import transforms
 
 
-def serial_training(*args, **kwargs):
-    def decorator(func):
+def serial_training(func):
+    def decorator(*args, **kwargs):
         trained_model = None
         serial_count = kwargs['configs']['serial_training']
         # train for different scales
@@ -27,7 +29,7 @@ def serial_training(*args, **kwargs):
     return decorator
 
 
-@serial_training(configs=conf)
+@serial_training
 def train_model(configs=conf):
     # set random seed
     torch.manual_seed(configs['manual_seed_num'])
@@ -37,18 +39,9 @@ def train_model(configs=conf):
         else torch.device("cpu")
     )
 
-    # add rotations
-    rotation = RotationTransform(angles=configs['rotation_angles'])
+    # todo 3d transform for crop etc.
     # compose transforms
-
-    composed_transform = transforms.Compose([
-        transforms.RandomCrop(configs['crop_size']),
-        transforms.RandomHorizontalFlip(p=configs['horizontal_flip_probability']),
-        transforms.RandomVerticalFlip(p=configs['vertical_flip_probability']),
-        rotation,
-        transforms.ToTensor()
-        # transforms.Normalize(mean=img_mean, std=img_std)
-    ])
+    composed_transform = get_transform(configs=configs)
     # todo optimize loading of the input for data parallelism
     # define train data set and data loader
     train_ds = ZVisionDataset(
@@ -65,7 +58,7 @@ def train_model(configs=conf):
     )
 
     # get model and optimizer
-    model, opt = get_model()
+    model, opt = get_model(configs=configs)
 
     # todo Data parallel
     if torch.cuda.device_count() > 2:
@@ -91,7 +84,7 @@ def train_model(configs=conf):
 
 
 if __name__ == "__main__":
-    m = train_model
+    m = train_model(configs=conf3D)
     result = m.output()
     m.evaluate_error()
     import matplotlib.pyplot as plt
@@ -99,3 +92,4 @@ if __name__ == "__main__":
     plt.show()
     pass
 
+    # todo sample normalization
