@@ -44,7 +44,7 @@ class ZVisionDataset(Dataset):
 
         # load image
         img_path = configs['image_path']
-        img = read_image_as_tensor(img_path, to_grayscale=self.configs['to_grayscale'])
+        img = read_image(img_path, to_grayscale=self.configs['to_grayscale'])
         # img = Image.open(img_path)
         # img = img.convert('L')
         self.img = img
@@ -111,7 +111,7 @@ class RandomCrop3D:
         return list(patch)[0]
 
 
-def read_image_as_tensor(img_path, to_grayscale=True):
+def read_image(img_path, to_grayscale=True):
     # load image
     if img_path.endswith('.tif'):
         img = io.imread(img_path)

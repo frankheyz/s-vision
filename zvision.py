@@ -3,6 +3,7 @@ import json
 import os
 import time
 
+import PIL.Image
 import torch
 import numpy as np
 import torchio as tio
@@ -20,7 +21,7 @@ from torchvision.utils import save_image
 from configs import configs as conf
 from collections import OrderedDict
 
-from utils import read_image_as_tensor
+from utils import read_image
 from utils import RandomCrop3D
 from utils import resize_tensor
 from utils import is_greyscale
@@ -122,13 +123,24 @@ class ZVision(nn.Module):
         return xb_last
 
     def output(self):
-        # load image
-        input_img = Image.open(self.configs['image_path'])
-        # convert it to greyscale
-        if self.configs['to_grayscale'] is True and is_greyscale(input_img) is False:
-            input_img = input_img.convert("L")
-        # convert it to tensor
-        input_img_tensor = transforms.ToTensor()(input_img)
+        # # load image
+        # input_img = Image.open(self.configs['image_path'])
+        # # convert it to greyscale
+        # if self.configs['to_grayscale'] is True and is_greyscale(input_img) is False:
+        #     input_img = input_img.convert("L")
+        input_img = read_image(self.configs['image_path'], self.configs['to_grayscale'])
+        swap_z = False
+        # convert PIL image to tensor
+        if isinstance(input_img, PIL.Image.Image):
+            input_img_tensor = transforms.ToTensor()(input_img)
+        elif isinstance(input_img, torch.Tensor):
+            input_img_tensor = input_img
+            # swap z-axis to the first dimension so that flip and rotations are perform in the x-y plane
+            input_img_tensor = input_img_tensor.transpose(0, -1)
+            swap_z = True
+        else:
+            raise ValueError("Incorrect input image format. Only PIL or torch.Tensor is allowed.")
+
         if self.dev.type == 'cuda':
             input_img_tensor = input_img_tensor.to('cuda')
 
@@ -140,12 +152,12 @@ class ZVision(nn.Module):
             # Rotate 90*i degrees and flip if i>=4
             if i < 4:
                 processed_input = torch.rot90(input_img_tensor, i, [in_dims - 2, in_dims - 1])
-            else:
+            else:  # todo check if this is dead code for 3d case
                 in_dims = torch.squeeze(input_img_tensor).shape.__len__()
                 processed_input = torch.fliplr(
                     torch.rot90(
                         torch.squeeze(input_img_tensor), i, [in_dims - 2, in_dims - 1]
-                    ) # todo 3d rotation
+                    )  # todo 3d rotation
                 )
                 # undo squeeze
                 processed_input.unsqueeze_(0).unsqueeze_(0)
@@ -154,9 +166,13 @@ class ZVision(nn.Module):
             self.eval()
 
             with torch.no_grad():
+                if swap_z:
+                    processed_input = processed_input.transpose(0, -1)
+
                 network_out = self.__call__(processed_input)
             # undo processing
             out_dims = network_out.shape.__len__()
+            # todo up down flip
             if i < 4:
                 network_out = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
             else:

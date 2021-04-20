@@ -84,7 +84,7 @@ def train_model(configs=conf):
 
 
 if __name__ == "__main__":
-    m = train_model(configs=conf3D)
+    m = train_model(configs=conf)
     result = m.output()
     m.evaluate_error()
     import matplotlib.pyplot as plt

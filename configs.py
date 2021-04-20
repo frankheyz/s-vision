@@ -67,7 +67,7 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "./images/whole_af_x_small_5x_z2.tif",
+        "image_path": "./images/yj_convolved_gaussian_3d_5_3.tif",
         "crop_size": (64, 64, 10),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
