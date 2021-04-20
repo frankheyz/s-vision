@@ -36,14 +36,14 @@ configs = {
     "serial_training": 2,
     "learning_rate": 1e-4,
     "momentum": 0.9,
-    "max_epochs": 50,
+    "max_epochs": 500,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,
     "output_channel_num": 1,
     "kernel_depth": 8,
     "kernel_size": 3,
-    "kernel_channel_num": 64,
+    "kernel_channel_num": 32,
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
     "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
@@ -67,10 +67,12 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "./images/yj_convolved_gaussian_3d_5_3.tif",
-        "crop_size": (64, 64, 10),
+        "image_path": "./images/lr_default.tif",
+        "reference_img_path": './images/hr_beads.tif',
+        "crop_size": (64, 64, 4),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
+        "output_img_fmt": '.tif',
     }
 )

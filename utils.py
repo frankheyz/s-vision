@@ -115,8 +115,10 @@ def read_image(img_path, to_grayscale=True):
     # load image
     if img_path.endswith('.tif'):
         img = io.imread(img_path)
+        smallest_axis = locate_smallest_axis(img)
         if len(img.shape) == 3 and img.shape[0] >= 1:
-            img = np.moveaxis(img, 0, -1)  # move the z-axis to the last dimension
+            # assume the axis with the smallest size is the z axis
+            img = np.moveaxis(img, smallest_axis, -1)  # move the z-axis to the last dimension
         # convert numpy img to tensor
         img = torch.from_numpy(img)
         # todo normalization
@@ -132,6 +134,19 @@ def read_image(img_path, to_grayscale=True):
     #     img = transforms.ToTensor()(img).squeeze()
 
     return img
+
+
+def locate_smallest_axis(img):
+    """
+    find the index of the smallest axis (usually the z-axis is the smallest)
+    :param img: a torch tensor
+    :return: an index
+    """
+    img_first, img_second, img_third = img.shape
+    dim_list = [img_first, img_second, img_third]
+    smallest_axis = dim_list.index(min(dim_list))
+
+    return smallest_axis
 
 
 def is_greyscale(in_img):

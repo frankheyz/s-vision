@@ -3,6 +3,8 @@ import json
 import os
 import time
 
+from tifffile import imsave
+
 import PIL.Image
 import torch
 import numpy as np
@@ -25,6 +27,7 @@ from utils import read_image
 from utils import RandomCrop3D
 from utils import resize_tensor
 from utils import is_greyscale
+from utils import locate_smallest_axis
 from utils import back_project_tensor
 
 from tabulate import tabulate
@@ -123,20 +126,18 @@ class ZVision(nn.Module):
         return xb_last
 
     def output(self):
-        # # load image
-        # input_img = Image.open(self.configs['image_path'])
-        # # convert it to greyscale
-        # if self.configs['to_grayscale'] is True and is_greyscale(input_img) is False:
-        #     input_img = input_img.convert("L")
+        # load image
         input_img = read_image(self.configs['image_path'], self.configs['to_grayscale'])
         swap_z = False
+        z_index = 0
         # convert PIL image to tensor
         if isinstance(input_img, PIL.Image.Image):
             input_img_tensor = transforms.ToTensor()(input_img)
         elif isinstance(input_img, torch.Tensor):
             input_img_tensor = input_img
             # swap z-axis to the first dimension so that flip and rotations are perform in the x-y plane
-            input_img_tensor = input_img_tensor.transpose(0, -1)
+            z_index = locate_smallest_axis(input_img_tensor)
+            input_img_tensor = input_img_tensor.transpose(0, z_index)
             swap_z = True
         else:
             raise ValueError("Incorrect input image format. Only PIL or torch.Tensor is allowed.")
@@ -153,27 +154,36 @@ class ZVision(nn.Module):
             if i < 4:
                 processed_input = torch.rot90(input_img_tensor, i, [in_dims - 2, in_dims - 1])
             else:  # todo check if this is dead code for 3d case
-                in_dims = torch.squeeze(input_img_tensor).shape.__len__()
+                in_dims = input_img_tensor.shape.__len__()
                 processed_input = torch.fliplr(
                     torch.rot90(
-                        torch.squeeze(input_img_tensor), i, [in_dims - 2, in_dims - 1]
+                        input_img_tensor, i, [in_dims - 2, in_dims - 1]
                     )  # todo 3d rotation
                 )
                 # undo squeeze
-                processed_input.unsqueeze_(0).unsqueeze_(0)
+                # processed_input.unsqueeze_(0)
 
             # run forward propagation
             self.eval()
 
             with torch.no_grad():
                 if swap_z:
-                    processed_input = processed_input.transpose(0, -1)
+                    # undo swapping
+                    processed_input = processed_input.transpose(0, z_index)
 
+                # output dimensions (1, 1, x, y) or (1, 1, x, y, z)
                 network_out = self.__call__(processed_input)
-            # undo processing
+            # undo processing(rotation, flip, etc.)
+            network_out = network_out.squeeze()
+
+            # undo swapping
+            if swap_z:
+                network_out = network_out.transpose(0, z_index)
+
             out_dims = network_out.shape.__len__()
             # todo up down flip
             if i < 4:
+                # todo fix z axis bug
                 network_out = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
             else:
                 out_dims = torch.squeeze(network_out).shape.__len__()
@@ -226,7 +236,17 @@ class ZVision(nn.Module):
                        + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
                        + self.configs['output_img_fmt']
             self.output_img_path = os.path.join(out_path, out_name)
-            save_image(self.final_output, self.output_img_path)
+            if out_name.endswith('jpg') or out_name.endswith('png'):
+                save_image(self.final_output, self.output_img_path)
+            elif out_name.endswith('tif'):
+                # save as tif.
+                out_img = self.final_output.cpu().numpy()
+                out_img = out_img / out_img.max()
+                out_img = out_img * 255
+                out_img = out_img.astype('uint8')
+                imsave(self.output_img_path, out_img)
+            else:
+                raise TypeError("Invalid output image format.")
 
         if self.configs['save_configs'] is True:
             out_path = os.path.join(
@@ -244,8 +264,15 @@ class ZVision(nn.Module):
         final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
         ref_path = self.configs['reference_img_path']
-        ref_img = Image.open(ref_path).convert('L')
+        ref_img = read_image(ref_path, self.configs['to_grayscale'])
+        # ref_img = Image.open(ref_path).convert('L')
         ref_img = np.asarray(ref_img).astype(final_output_np.dtype)
+        if locate_smallest_axis(ref_img) != locate_smallest_axis(final_output_np):
+            # move the z axis to the last
+            final_output_np = np.moveaxis(
+                final_output_np, locate_smallest_axis(final_output_np), -1
+            )
+
         ref_img_normalized = ref_img/np.amax(ref_img)
 
         sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
