@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import argparse
 import torch
 from torch import nn
 from zvision import fit
@@ -65,6 +66,8 @@ def train_model(configs=conf):
         print("Using", torch.cuda.device_count(), "GPUs.")
         model = nn.DataParallel(model)
 
+    print('Input image: ', configs['image_path'])
+
     model.to(device=dev)
     if dev.type == 'cuda':
         model.dev = dev
@@ -84,7 +87,13 @@ def train_model(configs=conf):
 
 
 if __name__ == "__main__":
-    m = train_model(configs=conf3D)
+    # parse arguments
+    parser = argparse.ArgumentParser(description="Train z-vision model.")
+    parser.add_argument("-c", "--print_string", help="Input configs.", default="2d")
+    args = parser.parse_args()
+    input_config = conf if args.print_string == '2d' else conf3D
+
+    m = train_model(configs=input_config)
     result = m.output()
     m.evaluate_error()
     # import matplotlib.pyplot as plt
@@ -93,3 +102,5 @@ if __name__ == "__main__":
     # pass
 
     # todo sample normalization
+    # todo check 3d data augumentation
+    # todo add command line arguments

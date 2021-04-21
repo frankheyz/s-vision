@@ -3,6 +3,8 @@ import os
 import json
 from math import pi
 from shutil import copyfile
+
+import PIL.Image
 import torch
 import torchio
 import torchio as tio
@@ -142,8 +144,8 @@ def locate_smallest_axis(img):
     :param img: a torch tensor
     :return: an index
     """
-    img_first, img_second, img_third = img.shape
-    dim_list = [img_first, img_second, img_third]
+    dims = img.shape
+    dim_list = list(dims)
     smallest_axis = dim_list.index(min(dim_list))
 
     return smallest_axis
@@ -179,6 +181,11 @@ def resize_tensor(
         antialiasing=True,
         kernel_shift_flag=False
         ):
+    # convert it to tensor if it is an PIL image
+    if isinstance(tensor_in, PIL.Image.Image):
+        tensor_in = transforms.ToTensor()(tensor_in)
+        tensor_in = torch.squeeze(tensor_in)
+
     if len(tensor_in.shape) == 3:
         three_d_image = True
     else:
@@ -555,6 +562,14 @@ def lanczos3(x):
 
 def linear(x):
     return (x + 1) * ((-1 <= x) & (x < 0)) + (1 - x) * ((0 <= x) & (x <= 1))
+
+
+def show_tensor(tensor_in, title=None):
+    import torchvision.transforms
+
+    to_pil = torchvision.transforms.ToPILImage()
+    img = to_pil(tensor_in*10)
+    img.show(title=title)
 
 
 if __name__ == "__main__":

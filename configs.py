@@ -10,6 +10,7 @@ configs = {
     # "image_path": "./images/whole_af_x_small_5x_z2.tif",
     "image_path": "./images/yj_256.jpg",
     "reference_img_path": './images/yj_1024.jpg',
+    "original_img_for_comparison": "./images/yj_256.jpg",
     "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
@@ -27,16 +28,16 @@ configs = {
     "horizontal_flip_probability": 0.5,
     "vertical_flip_probability": 0.5,
     "output_flip": True,
-    "back_projection_iters": [2],
+    "back_projection_iters": [10],
     "upscale_method": 'cubic',
     "downscale_method": 'cubic',
 
     # training hyper-parameters
     "use_gpu": True,
     "serial_training": 2,
-    "learning_rate": 1e-4,
+    "learning_rate": 1e-3,
     "momentum": 0.9,
-    "max_epochs": 500,
+    "max_epochs": 2000,
     "min_epochs": 128,
     "show_loss": 25,
     "input_channel_num": 1,
@@ -49,6 +50,7 @@ configs = {
     "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
     "padding_mode": 'zeros',
     "time_lapsed": 100,
+    "residual_learning": True,
 
     # save configs
     "configs_file_path": __file__,
@@ -69,10 +71,11 @@ configs3D.update(
     {
         "image_path": "./images/lr_default.tif",
         "reference_img_path": './images/hr_beads.tif',
-        "crop_size": (64, 64, 4),
+        "crop_size": (32, 32, 4),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
         "output_img_fmt": '.tif',
+        "original_img_for_comparison": "./images/lr_default.tif"
     }
 )

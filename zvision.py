@@ -47,6 +47,7 @@ class ZVision(nn.Module):
     def __init__(self, configs=conf):
         super(ZVision, self).__init__()
         self.configs = configs
+        self.original_img_tensor = None
         self.output_img_path = None
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
         self.upscale_method = self.configs['upscale_method']
@@ -123,7 +124,9 @@ class ZVision(nn.Module):
         # todo add residue
         xb_last = self.layers[str(self.configs['kernel_depth'] - 1)](xb_mid)
 
-        return xb_last
+        xb_output = xb_last + self.configs['residual_learning'] * xb_hi_res
+
+        return xb_output
 
     def output(self):
         # load image
@@ -160,50 +163,66 @@ class ZVision(nn.Module):
                         input_img_tensor, i, [in_dims - 2, in_dims - 1]
                     )  # todo 3d rotation
                 )
+
                 # undo squeeze
                 # processed_input.unsqueeze_(0)
 
             # run forward propagation
             self.eval()
-
+            from utils import show_tensor
             with torch.no_grad():
                 if swap_z:
-                    # undo swapping
-                    processed_input = processed_input.transpose(0, z_index)
+                    # undo swapping, move z to the last axis for the model inference
+                    processed_input = torch.moveaxis(processed_input, 0, -1)
+                    z = 1
 
                 # output dimensions (1, 1, x, y) or (1, 1, x, y, z)
                 network_out = self.__call__(processed_input)
             # undo processing(rotation, flip, etc.)
             network_out = network_out.squeeze()
+            # add a singleton dimension to make sure flipping is the same
+            network_out = network_out.unsqueeze(0)
 
             # undo swapping
             if swap_z:
-                network_out = network_out.transpose(0, z_index)
+                # arrange network out as (1, z, x, y)
+                network_out = torch.moveaxis(network_out, -1, 1)
 
             out_dims = network_out.shape.__len__()
             # todo up down flip
             if i < 4:
                 # todo fix z axis bug
-                network_out = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
+                network_out_undo_aug = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
+                pass
             else:
-                out_dims = torch.squeeze(network_out).shape.__len__()
-                network_out = torch.rot90(
-                    torch.fliplr(torch.squeeze(network_out)),  # todo 3d flip
+                # special treatment for 3d output
+                if network_out.shape.__len__() == 4:
+                    network_out = network_out.squeeze()
+
+                out_dims = network_out.shape.__len__()
+                network_out_undo_aug = torch.rot90(
+                    torch.fliplr(network_out),  # todo 3d flip
                     -i,
                     [out_dims - 2, out_dims - 1]
                 )
+                # show_tensor(input_img_tensor[0,:,:], title='input tensor')
+                # show_tensor(processed_input[:,:,0], title='processed input')
+                # show_tensor(network_out[0,:,:], title='net out')
+                # show_tensor(network_out_undo_aug[0,:,:], 'net undo aug')
 
+                # z = 1
             # apply back projection
+            network_out_bp = None
             for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
-                network_out = back_project_tensor(
-                    y_sr=torch.squeeze(network_out),
+                network_out_bp = back_project_tensor(
+                    y_sr=torch.squeeze(network_out_undo_aug),
                     y_lr=torch.squeeze(input_img_tensor),
                     down_kernel=self.configs['downscale_method'],
                     up_kernel=self.configs['upscale_method'],
                     sf=self.scale_factor
                 )
 
-            outputs.append(network_out)
+            outputs.append(network_out_bp)
 
         intermediate_network_out = torch.median(torch.stack(outputs), 0).values
 
@@ -273,15 +292,32 @@ class ZVision(nn.Module):
                 final_output_np, locate_smallest_axis(final_output_np), -1
             )
 
-        ref_img_normalized = ref_img/np.amax(ref_img)
+        ref_img_normalized = ref_img/np.max(ref_img)
 
+        # interpolation
+        original_img = read_image(self.configs['original_img_for_comparison'], self.configs['to_grayscale'])
+        interp_img = resize_tensor(original_img, 4, kernel='cubic')
+        interp_img = interp_img.numpy()
+        if locate_smallest_axis(ref_img) != locate_smallest_axis(interp_img):
+            # move the z axis to the last
+            interp_img = np.moveaxis(
+                interp_img, locate_smallest_axis(interp_img), -1
+            )
+        interp_img = interp_img.astype('float32')
+        interp_img_normalized = interp_img/np.max(interp_img)
         sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
         sr_ssim = ssim(ref_img_normalized, final_output_np)
 
+        interp_mse = mean_squared_error(ref_img_normalized, interp_img_normalized)
+        interp_ssim = ssim(ref_img_normalized, interp_img_normalized)
+
         print(
             tabulate(
-                [["MSE", "{:.6f}".format(sr_mse)], ["SSIM", "{:.6f}".format(sr_ssim)]],
-                headers=['Errors', 'Value'],
+                [
+                    ["MSE", "{:.6f}".format(sr_mse), "{:.6f}".format(interp_mse)],
+                    ["SSIM", "{:.6f}".format(sr_ssim), "{:.6f}".format(interp_ssim)]
+                ],
+                headers=['Errors', 'SRx2', 'InterpX2'],
                 tablefmt='grid'
             )
         )
@@ -406,7 +442,11 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.title('Losses')
-    plt.show()
+    loss_path = os.path.join(configs['save_path'],configs['output_img_dir'])
+    loss_file = os.path.join(loss_path, 'loss_fig')
+    os.makedirs(loss_path, exist_ok=True)
+    plt.savefig(loss_file)
+    # plt.show()
 
 
 def loss_batch(model, loss_func, xb, yb, opt=None):
