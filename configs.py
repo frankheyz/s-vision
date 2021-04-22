@@ -8,9 +8,9 @@ import copy
 configs = {
     # data loading configs
     # "image_path": "./images/whole_af_x_small_5x_z2.tif",
-    "image_path": "./images/yj_256.jpg",
-    "reference_img_path": './images/yj_1024.jpg',
-    "original_img_for_comparison": "./images/yj_256.jpg",
+    "image_path": "./images/yj_256.png",
+    "reference_img_path": './images/yj_1024.png',
+    "original_lr_img_for_comparison": "./images/yj_256.png",
     "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
@@ -22,7 +22,7 @@ configs = {
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
     "provide_kernel": False,
     "kernel": 'cubic',
-    "crop_size": (256, 256),
+    "crop_size": (128, 128),
     "noise_std": 0.0,
     "rotation_angles": [90, 180, 270],
     "horizontal_flip_probability": 0.5,
@@ -31,26 +31,28 @@ configs = {
     "back_projection_iters": [10],
     "upscale_method": 'cubic',
     "downscale_method": 'cubic',
+    "normalization": True,
 
     # training hyper-parameters
     "use_gpu": True,
     "serial_training": 2,
-    "learning_rate": 1e-3,
+    "learning_rate": 0.00015,
     "momentum": 0.9,
     "max_epochs": 2000,
     "min_epochs": 128,
-    "show_loss": 25,
+    "show_loss": 50,
     "input_channel_num": 1,
     "output_channel_num": 1,
-    "kernel_depth": 8,
+    "kernel_depth": 16,
     "kernel_size": 3,
     "kernel_channel_num": 32,
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
     "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
-    "padding_mode": 'zeros',
+    "padding_mode": 'reflect',
     "time_lapsed": 100,
     "residual_learning": True,
+    'interp_method': 'cubic',
 
     # save configs
     "configs_file_path": __file__,
@@ -60,7 +62,7 @@ configs = {
     "checkpoint_dir": 'checkpoint/',
     "save_output_img": True,
     "output_img_dir": 'output_image/',
-    "output_img_fmt": '.jpg',
+    "output_img_fmt": '.png',
     "model_name": "model.pt",
     "save_configs": True,
     "output_configs_dir": 'output_configs/'
@@ -75,7 +77,9 @@ configs3D.update(
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
+        "kernel_channel_num": 32,
+        "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
-        "original_img_for_comparison": "./images/lr_default.tif"
+        "original_lr_img_for_comparison": "./images/lr_default.tif"
     }
 )

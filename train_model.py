@@ -7,10 +7,8 @@ from zvision import get_data
 from zvision import get_model
 from zvision import get_transform
 from utils import ZVisionDataset
-from utils import RotationTransform
 from configs import configs as conf
 from configs import configs3D as conf3D
-from torchvision import transforms
 
 
 def serial_training(func):
@@ -73,7 +71,7 @@ def train_model(configs=conf):
         model.dev = dev
 
     # fit the model
-    fit(
+    trained_model = fit(
         configs=configs,
         model=model,
         loss_func=nn.MSELoss(),
@@ -83,7 +81,7 @@ def train_model(configs=conf):
         device=dev,
     )
 
-    return model
+    return trained_model
 
 
 if __name__ == "__main__":
@@ -103,4 +101,3 @@ if __name__ == "__main__":
 
     # todo sample normalization
     # todo check 3d data augumentation
-    # todo add command line arguments
