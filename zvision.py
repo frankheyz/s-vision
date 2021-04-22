@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from utils import RotationTransform
 from torch.utils.data import DataLoader
+from torch.optim import lr_scheduler
 from torchvision.utils import save_image
 
 from configs import configs as conf
@@ -418,6 +419,14 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
     save_path = configs['save_path'] + configs['checkpoint_dir']
     os.makedirs(save_path, exist_ok=True)
 
+    rate_scheduler = lr_scheduler.ReduceLROnPlateau(
+        optimizer=opt,
+        mode='min',
+        factor=configs['adaptive_lr_factor'],
+        min_lr=configs['min_lr'],
+        verbose=True
+    )
+
     for epoch in range(configs['max_epochs']):
         model.train()
 
@@ -442,6 +451,8 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
             min_loss = val_loss
 
         loss_values.append(val_loss)
+        if configs['adaptive_lr']:
+            rate_scheduler.step(val_loss)
 
         if epoch % configs['show_loss'] == 0:
             print("epoch: {epoch}/{epochs}  validation loss: {loss:.6f}".format(

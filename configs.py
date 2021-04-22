@@ -7,7 +7,6 @@ import copy
 """
 configs = {
     # data loading configs
-    # "image_path": "./images/whole_af_x_small_5x_z2.tif",
     "image_path": "./images/yj_256.png",
     "reference_img_path": './images/yj_1024.png',
     "original_lr_img_for_comparison": "./images/yj_256.png",
@@ -37,6 +36,9 @@ configs = {
     "use_gpu": True,
     "serial_training": 2,
     "learning_rate": 0.00015,
+    "adaptive_lr": False,
+    "min_lr": 9e-5,
+    "adaptive_lr_factor": 0.8,
     "momentum": 0.9,
     "max_epochs": 2000,
     "min_epochs": 128,

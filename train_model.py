@@ -99,5 +99,5 @@ if __name__ == "__main__":
     # plt.show()
     # pass
 
-    # todo sample normalization
-    # todo check 3d data augumentation
+    # todo check 3d data augmentation
+    # todo add adaptive gradient
