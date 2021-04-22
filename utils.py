@@ -22,6 +22,10 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torchvision.transforms.functional as TF
 
+from skimage.metrics import mean_squared_error
+from skimage.metrics import structural_similarity as ssim
+
+from tabulate import tabulate
 from scipy.ndimage import filters, measurements, interpolation
 
 
@@ -570,6 +574,49 @@ def show_tensor(tensor_in, title=None):
     to_pil = torchvision.transforms.ToPILImage()
     img = to_pil(tensor_in*10)
     img.show(title=title)
+
+
+def evaluate_error_of_imgs(ref_img, sr_img, lr_img):
+    # mse, ssim etc.
+    # format output
+    final_output_np = sr_img
+
+    # ref_img = np.asarray(ref_img).astype(final_output_np.dtype)
+    if locate_smallest_axis(ref_img) != locate_smallest_axis(final_output_np):
+        # move the z axis to the last
+        final_output_np = np.moveaxis(
+            final_output_np, locate_smallest_axis(final_output_np), -1
+        )
+
+    ref_img_normalized = ref_img / np.max(ref_img)
+
+    # interpolation
+    original_lr_img = lr_img
+    interp_img = resize_tensor(original_lr_img, 4, kernel='cubic')
+    interp_img = interp_img.numpy()
+    if locate_smallest_axis(ref_img) != locate_smallest_axis(interp_img):
+        # move the z axis to the last
+        interp_img = np.moveaxis(
+            interp_img, locate_smallest_axis(interp_img), -1
+        )
+    interp_img = interp_img.astype('float32')
+    interp_img_normalized = interp_img / np.max(interp_img)
+    sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
+    sr_ssim = ssim(ref_img_normalized, final_output_np)
+
+    interp_mse = mean_squared_error(ref_img_normalized, interp_img_normalized)
+    interp_ssim = ssim(ref_img_normalized, interp_img_normalized)
+
+    print(
+        tabulate(
+            [
+                ["MSE", "{:.6f}".format(sr_mse), "{:.6f}".format(interp_mse)],
+                ["SSIM", "{:.6f}".format(sr_ssim), "{:.6f}".format(interp_ssim)]
+            ],
+            headers=['Errors', 'SRx2', 'InterpX2'],
+            tablefmt='grid'
+        )
+    )
 
 
 if __name__ == "__main__":
