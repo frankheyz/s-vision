@@ -2,6 +2,7 @@
 import json
 import os
 import time
+import copy
 
 from tifffile import imsave
 
@@ -164,9 +165,6 @@ class ZVision(nn.Module):
                     )  # todo 3d rotation
                 )
 
-                # undo squeeze
-                # processed_input.unsqueeze_(0)
-
             # run forward propagation
             self.eval()
             from utils import show_tensor
@@ -295,8 +293,8 @@ class ZVision(nn.Module):
         ref_img_normalized = ref_img/np.max(ref_img)
 
         # interpolation
-        original_img = read_image(self.configs['original_img_for_comparison'], self.configs['to_grayscale'])
-        interp_img = resize_tensor(original_img, 4, kernel='cubic')
+        original_lr_img = read_image(self.configs['original_lr_img_for_comparison'], self.configs['to_grayscale'])
+        interp_img = resize_tensor(original_lr_img, 4, kernel=self.configs['interp_method'])
         interp_img = interp_img.numpy()
         if locate_smallest_axis(ref_img) != locate_smallest_axis(interp_img):
             # move the z axis to the last
@@ -340,13 +338,18 @@ def get_data(train_ds, valid_ds, configs=conf):
 
     return (
         DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=num_work),
-        DataLoader(valid_ds, batch_size=bs * 2, num_workers=num_work),
+        DataLoader(valid_ds, batch_size=bs * 10, num_workers=num_work),
     )
 
 
 def get_transform(configs):
     # 2D case
     if len(configs['crop_size']) == 2:
+        # calculate image mean and std.
+        img = read_image(configs['image_path'])
+        img_tensor = transforms.ToTensor()(img)
+        img_tensor_mean = torch.mean(img_tensor).item()
+        img_tensor_std = torch.std(img_tensor).item()
         # add rotations
         rotation = RotationTransform(angles=configs['rotation_angles'])
         # compose transforms
@@ -356,10 +359,14 @@ def get_transform(configs):
             transforms.RandomHorizontalFlip(p=configs['horizontal_flip_probability']),
             transforms.RandomVerticalFlip(p=configs['vertical_flip_probability']),
             rotation,
-            transforms.ToTensor()
-            # transforms.Normalize(mean=img_mean, std=img_std)
+            transforms.ToTensor(),
         ])
+
+        if configs['normalization']:
+            composed_transform.transforms.append(transforms.Normalize(mean=img_tensor_mean, std=img_tensor_std))
+
     elif len(configs['crop_size']) == 3:  # 3D case
+        normalization = tio.ZNormalization()
         (crop_x, crop_y, crop_z) = configs['crop_size']
         random_crop_3d = RandomCrop3D(crop_size=(crop_x, crop_y, crop_z))
         flips = tio.RandomFlip(axes=['LR', 'AP', 'IS'])
@@ -371,6 +378,9 @@ def get_transform(configs):
         }
         rotation = tio.OneOf(rotations_dict)
         transforms_list = [random_crop_3d, flips, rotation]
+        if configs['normalization']:
+            transforms_list.insert(0, normalization)
+
         composed_transform = tio.Compose(transforms=transforms_list)
 
     else:
@@ -402,6 +412,12 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
 
     start_time = time.time()
     loss_values = []
+    min_loss = 1
+    best_model = None
+    best_epoch = 0
+    save_path = configs['save_path'] + configs['checkpoint_dir']
+    os.makedirs(save_path, exist_ok=True)
+
     for epoch in range(configs['max_epochs']):
         model.train()
 
@@ -419,6 +435,12 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
                     for _, sample in enumerate(valid_dl)]
             )
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+
+        if val_loss < min_loss:
+            best_model = copy.deepcopy(model)
+            best_epoch = epoch
+            min_loss = val_loss
+
         loss_values.append(val_loss)
 
         if epoch % configs['show_loss'] == 0:
@@ -433,10 +455,10 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
             )
 
         if epoch != 0 and epoch % configs['checkpoint'] == 0:
-            save_path = configs['save_path'] + configs['checkpoint_dir']
-            os.makedirs(save_path, exist_ok=True)
             # save the model state dict
-            torch.save(model.state_dict(), save_path + configs['model_name'])
+            torch.save(best_model.state_dict(), save_path + configs['model_name'])
+
+    torch.save(best_model.state_dict(), save_path + configs['model_name'])
 
     plt.plot(loss_values)
     plt.xlabel('Epochs')
@@ -447,6 +469,10 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
     os.makedirs(loss_path, exist_ok=True)
     plt.savefig(loss_file)
     # plt.show()
+
+    print("Best epoch: ", best_epoch)
+
+    return best_model
 
 
 def loss_batch(model, loss_func, xb, yb, opt=None):
