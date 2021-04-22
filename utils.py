@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import json
 from math import pi
 from shutil import copyfile
@@ -617,6 +618,23 @@ def evaluate_error_of_imgs(ref_img, sr_img, lr_img):
             tablefmt='grid'
         )
     )
+
+
+class Logger:
+    def __init__(self, path, file_name='log.txt'):
+        self.console = sys.stdout
+        os.makedirs(path, exist_ok=True)
+        self.file = open(
+            os.path.join(path,file_name), 'w'
+        )
+
+    def write(self, message):
+        self.console.write(message)
+        self.file.write(message)
+
+    def flush(self):
+        self.console.flush()
+        self.file.flush()
 
 
 if __name__ == "__main__":

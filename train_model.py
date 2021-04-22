@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import sys
 import argparse
+from utils import Logger
 import torch
 from torch import nn
 from zvision import fit
@@ -90,6 +92,10 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--print_string", help="Input configs.", default="2d")
     args = parser.parse_args()
     input_config = conf if args.print_string == '2d' else conf3D
+
+    # logger
+    path = input_config['save_path']
+    sys.stdout = Logger(path)
 
     m = train_model(configs=input_config)
     result = m.output()
