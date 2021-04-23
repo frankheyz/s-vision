@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import sys
 import argparse
-from utils import Logger
 import torch
 from torch import nn
+from utils import Logger
+from utils import ZVisionDataset
 from zvision import fit
 from zvision import get_data
 from zvision import get_model
 from zvision import get_transform
-from utils import ZVisionDataset
 from configs import configs as conf
 from configs import configs3D as conf3D
 
