@@ -339,7 +339,7 @@ def get_data(train_ds, valid_ds, configs=conf):
 
     return (
         DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=num_work),
-        DataLoader(valid_ds, batch_size=bs * 10, num_workers=num_work),
+        DataLoader(valid_ds, batch_size=bs, num_workers=num_work),
     )
 
 
@@ -451,6 +451,7 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
             min_loss = val_loss
 
         loss_values.append(val_loss)
+
         if configs['adaptive_lr']:
             rate_scheduler.step(val_loss)
 

@@ -39,7 +39,7 @@ configs = {
     "adaptive_lr": False,
     "min_lr": 9e-5,
     "adaptive_lr_factor": 0.8,
-    "max_epochs": 3000,
+    "max_epochs": 1000,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,

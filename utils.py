@@ -90,8 +90,7 @@ class ZVisionDataset(Dataset):
         img_lr = self.high_res_2_low_res(img)
         # add the dimension for batch size
         img_lr = img_lr.unsqueeze(0)
-        # if img.max() > 1:
-        #     print('ah!')
+
         sample = {
             "img": img,
             "img_lr": img_lr
