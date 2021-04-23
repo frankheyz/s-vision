@@ -19,6 +19,7 @@ from os import listdir
 from configs import configs
 from matplotlib import pyplot as plt
 from torchvision import transforms
+
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torchvision.transforms.functional as TF
@@ -89,6 +90,8 @@ class ZVisionDataset(Dataset):
         img_lr = self.high_res_2_low_res(img)
         # add the dimension for batch size
         img_lr = img_lr.unsqueeze(0)
+        # if img.max() > 1:
+        #     print('ah!')
         sample = {
             "img": img,
             "img_lr": img_lr
@@ -570,10 +573,8 @@ def linear(x):
 
 
 def show_tensor(tensor_in, title=None):
-    import torchvision.transforms
-
-    to_pil = torchvision.transforms.ToPILImage()
-    img = to_pil(tensor_in*10)
+    to_pil = transforms.ToPILImage()
+    img = to_pil(tensor_in)
     img.show(title=title)
 
 
