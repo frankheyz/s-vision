@@ -128,7 +128,7 @@ class ZVision(nn.Module):
 
         xb_output = xb_last + self.configs['residual_learning'] * xb_hi_res
 
-        return xb_output
+        return torch.clip(xb_output, 0, 1)
 
     def output(self):
         # load image
