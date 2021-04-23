@@ -30,7 +30,7 @@ configs = {
     "back_projection_iters": [10],
     "upscale_method": 'cubic',
     "downscale_method": 'cubic',
-    "normalization": True,
+    "normalization": False,
 
     # training hyper-parameters
     "use_gpu": True,
@@ -39,15 +39,14 @@ configs = {
     "adaptive_lr": False,
     "min_lr": 9e-5,
     "adaptive_lr_factor": 0.8,
-    "momentum": 0.9,
-    "max_epochs": 2000,
+    "max_epochs": 3000,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
     "output_channel_num": 1,
-    "kernel_depth": 16,
+    "kernel_depth": 8,
     "kernel_size": 3,
-    "kernel_channel_num": 32,
+    "kernel_channel_num": 64,
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
     "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
