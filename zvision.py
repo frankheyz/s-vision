@@ -116,7 +116,7 @@ class ZVision(nn.Module):
         )
 
         # TODO check which activation function is better
-        xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0)  # add non-x,y dimensions
+        xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0).float()  # add non-x,y dimensions
         xb_mid = F.relu(self.layers[str(0)](xb_hi_res))
 
         for layer in range(1, self.configs['kernel_depth'] - 1):
@@ -128,7 +128,8 @@ class ZVision(nn.Module):
 
         xb_output = xb_last + self.configs['residual_learning'] * xb_hi_res
 
-        return torch.clip(xb_output, 0, 1)
+        return torch.clamp_min(xb_output, 0)
+        # return xb_output
 
     def output(self):
         # load image
@@ -221,6 +222,8 @@ class ZVision(nn.Module):
                     sf=self.scale_factor
                 )
 
+            # normalize network_out_bp
+            network_out_bp = network_out_bp / torch.max(network_out_bp)
             outputs.append(network_out_bp)
 
         intermediate_network_out = torch.median(torch.stack(outputs), 0).values
@@ -255,7 +258,7 @@ class ZVision(nn.Module):
                        + self.configs['output_img_fmt']
             self.output_img_path = os.path.join(out_path, out_name)
             if out_name.endswith('jpg') or out_name.endswith('png'):
-                save_image(self.final_output, self.output_img_path)
+                save_image(self.final_output/torch.max(self.final_output), self.output_img_path)
             elif out_name.endswith('tif'):
                 # save as tif.
                 out_img = self.final_output.cpu().numpy()

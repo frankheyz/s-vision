@@ -7,9 +7,9 @@ import copy
 """
 configs = {
     # data loading configs
-    "image_path": "./images/yj_256.png",
-    "reference_img_path": './images/yj_1024.png',
-    "original_lr_img_for_comparison": "./images/yj_256.png",
+    "image_path": "./images/low_density_lr.png",
+    "reference_img_path": './images/low_density.png',
+    "original_lr_img_for_comparison": "./images/low_density_lr.png",
     "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
@@ -39,7 +39,7 @@ configs = {
     "adaptive_lr": False,
     "min_lr": 9e-5,
     "adaptive_lr_factor": 0.8,
-    "max_epochs": 1000,
+    "max_epochs": 3000,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -72,8 +72,8 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "./images/lr_default.tif",
-        "reference_img_path": './images/hr_beads.tif',
+        "image_path": "./images/low_density_lr_3d.tif",
+        "reference_img_path": './images/low_density_3d.tif',
         "crop_size": (32, 32, 4),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
@@ -81,6 +81,6 @@ configs3D.update(
         "kernel_channel_num": 32,
         "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
-        "original_lr_img_for_comparison": "./images/lr_default.tif"
+        "original_lr_img_for_comparison": "./images/low_density_lr_3d.tif"
     }
 )

@@ -107,3 +107,4 @@ if __name__ == "__main__":
 
     # todo check 3d data augmentation
     # todo add adaptive gradient
+    # todo update the batch size of data loader
