@@ -13,7 +13,7 @@ configs = {
     "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
-    "batch_size": 32,
+    "batch_size": 16,
     "num_workers": 0,
 
     # data preprocessing configs
@@ -21,7 +21,7 @@ configs = {
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
     "provide_kernel": False,
     "kernel": 'cubic',
-    "crop_size": (128, 128),
+    "crop_size": (64, 64),
     "noise_std": 0.0,
     "rotation_angles": [90, 180, 270],
     "horizontal_flip_probability": 0.5,
@@ -39,7 +39,7 @@ configs = {
     "adaptive_lr": False,
     "min_lr": 9e-5,
     "adaptive_lr_factor": 0.8,
-    "max_epochs": 3000,
+    "max_epochs": 500,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,

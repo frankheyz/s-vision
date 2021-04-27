@@ -109,24 +109,34 @@ class ZVision(nn.Module):
 
     def forward(self, xb):
         # interpolate xb to high resolution
-        xb_hi_res = resize_tensor(
-            torch.squeeze(xb),  # keep x,y dimensions only
-            scale_factor=self.scale_factor,
-            kernel=self.upscale_method
-        )
+        xb_instance_high_res_list = []
+        batch_size = xb.size()[0]
+        for i in range(batch_size):
+            if self.configs['crop_size'].__len__() == 2:
+                xb_instance = torch.squeeze(xb, 1)[i, :]  # todo fix here
+            else:  # 3d case
+                xb_instance = torch.squeeze(xb, 1)[i, :, :, :]
+
+            xb_instance_high_res = resize_tensor(
+                xb_instance,  # keep x,y dimensions only
+                scale_factor=self.scale_factor,
+                kernel=self.upscale_method
+            )
+            xb_instance_high_res_list.append(xb_instance_high_res)
+
+        # turn xb_stack to tensor
+        xb_instance_high_res_tensor = torch.stack(xb_instance_high_res_list)
 
         # TODO check which activation function is better
-        xb_hi_res = xb_hi_res.unsqueeze(0).unsqueeze(0).float()  # add non-x,y dimensions
-        xb_mid = F.relu(self.layers[str(0)](xb_hi_res))
+        xb_high_res = xb_instance_high_res_tensor.unsqueeze(1).float()  # add non-x,y dimensions
+        xb_mid = F.relu(self.layers[str(0)](xb_high_res))
 
         for layer in range(1, self.configs['kernel_depth'] - 1):
             xb_mid = F.relu(self.layers[str(layer)](xb_mid))
 
-        # output the last layer
-        # todo add residue
         xb_last = self.layers[str(self.configs['kernel_depth'] - 1)](xb_mid)
-
-        xb_output = xb_last + self.configs['residual_learning'] * xb_hi_res
+        # output the last layer with residue
+        xb_output = xb_last + self.configs['residual_learning'] * xb_high_res
 
         return torch.clamp_min(xb_output, 0)
         # return xb_output
@@ -139,11 +149,13 @@ class ZVision(nn.Module):
         # convert PIL image to tensor
         if isinstance(input_img, PIL.Image.Image):
             input_img_tensor = transforms.ToTensor()(input_img)
+            input_img_tensor = input_img_tensor.unsqueeze(0)  # add the 'batch size' dimension
         elif isinstance(input_img, torch.Tensor):
             input_img_tensor = input_img
             # swap z-axis to the first dimension so that flip and rotations are perform in the x-y plane
             z_index = locate_smallest_axis(input_img_tensor)
             input_img_tensor = input_img_tensor.transpose(0, z_index)
+            input_img_tensor = input_img_tensor.unsqueeze(0)  # add the 'batch size' dimension
             swap_z = True
         else:
             raise ValueError("Incorrect input image format. Only PIL or torch.Tensor is allowed.")
@@ -169,12 +181,10 @@ class ZVision(nn.Module):
 
             # run forward propagation
             self.eval()
-            from utils import show_tensor
             with torch.no_grad():
                 if swap_z:
                     # undo swapping, move z to the last axis for the model inference
-                    processed_input = torch.moveaxis(processed_input, 0, -1)
-                    z = 1
+                    processed_input = torch.moveaxis(processed_input, 1, -1)
 
                 # output dimensions (1, 1, x, y) or (1, 1, x, y, z)
                 network_out = self.__call__(processed_input)

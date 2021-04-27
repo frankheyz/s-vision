@@ -61,8 +61,7 @@ class ZVisionDataset(Dataset):
         # self.img = torch.from_numpy(img)
 
     def __len__(self):
-        # return 1 since it is zero-shot learning
-        return 1
+        return self.configs['batch_size']
 
     # todo implement gradual SR where training data is gradually added as scale factor increases
     def __getitem__(self, idx):
