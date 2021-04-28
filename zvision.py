@@ -11,7 +11,7 @@ import torch
 import numpy as np
 import torchio as tio
 from scipy.io import loadmat
-
+from ray import tune
 from PIL import Image
 from torch import nn
 from torch import optim
@@ -482,6 +482,10 @@ def fit(configs, model, loss_func, opt, train_dl, valid_dl, device=torch.device(
         if epoch != 0 and epoch % configs['checkpoint'] == 0:
             # save the model state dict
             torch.save(best_model.state_dict(), save_path + configs['model_name'])
+
+        # report to tune
+        if 'tune' in configs:
+            tune.report(loss=val_loss)
 
     torch.save(best_model.state_dict(), save_path + configs['model_name'])
 

@@ -7,10 +7,10 @@ import copy
 """
 configs = {
     # data loading configs
-    "image_path": "./images/low_density_lr.png",
-    "reference_img_path": './images/low_density.png',
-    "original_lr_img_for_comparison": "./images/low_density_lr.png",
-    "kernel_path": './images/BSD100_100_lr_rand_ker_c_X2_0.mat',
+    "image_path": "/home/heyz/code/z-vision/images/low_density_lr.png",
+    "reference_img_path": '/home/heyz/code/z-vision/images/low_density.png',
+    "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_lr.png",
+    "kernel_path": '/home/heyz/code/z-vision/images/BSD100_100_lr_rand_ker_c_X2_0.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
     "batch_size": 16,
@@ -21,7 +21,7 @@ configs = {
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
     "provide_kernel": False,
     "kernel": 'cubic',
-    "crop_size": (64, 64),
+    "crop_size": (128, 128),
     "noise_std": 0.0,
     "rotation_angles": [90, 180, 270],
     "horizontal_flip_probability": 0.5,
@@ -35,7 +35,7 @@ configs = {
     # training hyper-parameters
     "use_gpu": True,
     "serial_training": 2,
-    "learning_rate": 0.00015,
+    "learning_rate": 0.0004809,
     "adaptive_lr": False,
     "min_lr": 9e-5,
     "adaptive_lr_factor": 0.8,
@@ -58,7 +58,7 @@ configs = {
     # save configs
     "configs_file_path": __file__,
     "checkpoint": 500,
-    "save_path": './results/' + time.strftime("%Y%m%d_%H_%M_%S", time.localtime()) + "/",
+    "save_path": '/home/heyz/code/z-vision/results/' + time.strftime("%Y%m%d_%H_%M_%S", time.localtime()) + "/",
     "model_dir": 'model/',
     "checkpoint_dir": 'checkpoint/',
     "save_output_img": True,
@@ -72,15 +72,17 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "./images/low_density_lr_3d.tif",
-        "reference_img_path": './images/low_density_3d.tif',
-        "crop_size": (32, 32, 4),
+        "image_path": "/home/heyz/code/z-vision/images/low_density_lr_3d.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/low_density_3d.tif',
+        "learning_rate": 0.0058549,
+        "crop_size": (64, 64, 4),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
-        "kernel_channel_num": 32,
+        "kernel_channel_num": 16,
+        'kernel_depth': 4,
         "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
-        "original_lr_img_for_comparison": "./images/low_density_lr_3d.tif"
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_lr_3d.tif"
     }
 )

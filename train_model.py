@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 import argparse
 import torch
@@ -13,25 +14,26 @@ from configs import configs as conf
 from configs import configs3D as conf3D
 
 
-def serial_training(func):
-    def decorator(*args, **kwargs):
-        trained_model = None
-        serial_count = kwargs['configs']['serial_training']
-        # train for different scales
-        for i in range(serial_count):
-            trained_model = func(*args, **kwargs)
-            trained_model.output()
-            new_training_img = trained_model.output_img_path
-            # update config
-            if i < serial_count - 1:
-                kwargs['configs']['image_path'] = new_training_img
+def serial_training(serial_count):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            trained_model = None
+            # train for different scales
+            for i in range(serial_count):
+                trained_model = func(*args, **kwargs)
+                new_training_img = trained_model.output_img_path
+                # update config
+                if i < serial_count - 1:
+                    kwargs['configs']['image_path'] = new_training_img
 
-        return trained_model
+            return trained_model
+        return wrapper
+
     return decorator
 
 
-@serial_training
-def train_model(configs=conf):
+@serial_training(serial_count=conf['serial_training'])
+def train_model(configs=conf, checkpoint_dir=None):
     # set random seed
     torch.manual_seed(configs['manual_seed_num'])
     # set gpu
@@ -61,6 +63,13 @@ def train_model(configs=conf):
     # get model and optimizer
     model, opt = get_model(configs=configs)
 
+    if checkpoint_dir:
+        model_state, optimizer_state = torch.load(
+            os.path.join(checkpoint_dir, "checkpoint")
+        )
+        model.load_state_dict(model_state)
+        opt.load_state_dict(optimizer_state)
+
     # todo Data parallel
     if torch.cuda.device_count() > 2:
         print("Using", torch.cuda.device_count(), "GPUs.")
@@ -83,7 +92,12 @@ def train_model(configs=conf):
         device=dev,
     )
 
-    return trained_model
+    trained_model.output()
+
+    if 'tune' in configs:
+        return
+    else:
+        return trained_model
 
 
 if __name__ == "__main__":
