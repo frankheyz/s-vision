@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import copy
+from torch import nn
 
 """
    Configuration file for the network
@@ -35,11 +36,12 @@ configs = {
     # training hyper-parameters
     "use_gpu": True,
     "serial_training": 2,
-    "learning_rate": 0.0004809,
+    "learning_rate": 0.00015,
     "adaptive_lr": False,
-    "min_lr": 9e-5,
-    "adaptive_lr_factor": 0.8,
-    "max_epochs": 500,
+    "min_lr": 9e-6,
+    "adaptive_lr_factor": 0.5,
+    "loss_func": 'l2',
+    "max_epochs": 1500,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -72,17 +74,17 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/low_density_lr_3d.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/low_density_3d.tif',
-        "learning_rate": 0.0058549,
-        "crop_size": (64, 64, 4),
+        "image_path": "/home/heyz/code/z-vision/images/low_density_z8_lr_3d.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/low_density_z32_3d.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_z8_lr_3d.tif",
+        "learning_rate": 0.0007,
+        "crop_size": (64, 64, 6),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
-        "kernel_channel_num": 16,
+        "kernel_channel_num": 32,
         'kernel_depth': 4,
         "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_lr_3d.tif"
     }
 )

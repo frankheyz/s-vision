@@ -32,7 +32,7 @@ def serial_training(serial_count):
     return decorator
 
 
-@serial_training(serial_count=conf['serial_training'])
+# @serial_training(serial_count=conf['serial_training'])
 def train_model(configs=conf, checkpoint_dir=None):
     # set random seed
     torch.manual_seed(configs['manual_seed_num'])
@@ -85,7 +85,7 @@ def train_model(configs=conf, checkpoint_dir=None):
     trained_model = fit(
         configs=configs,
         model=model,
-        loss_func=nn.MSELoss(),
+        loss_func=nn.L1Loss() if configs['loss_func'] == 'l1' else nn.MSELoss(),
         opt=opt,
         train_dl=train_dl,
         valid_dl=valid_dl,
@@ -120,4 +120,5 @@ if __name__ == "__main__":
     # pass
 
     # todo check 3d data augmentation
-    # todo add adaptive gradient
+    # todo check output limit
+    # todo rotation saving bug
