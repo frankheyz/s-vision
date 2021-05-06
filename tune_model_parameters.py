@@ -13,7 +13,7 @@ from configs import configs3D
 from train_model import train_model
 
 
-def main(num_of_samples=50, max_num_epochs=100, gpu_per_trail=2, conf=configs):
+def main(num_of_samples=100, max_num_epochs=100, gpu_per_trail=2, cpu_per_trail=2, conf=configs):
     # determine if input is 2d or 3d
     if conf['crop_size'].__len__() == 2:
         conf.update(
@@ -30,12 +30,16 @@ def main(num_of_samples=50, max_num_epochs=100, gpu_per_trail=2, conf=configs):
         conf.update(
             {
                 "tune": True,
-                "learning_rate": tune.loguniform(1e-5, 1e-2),
+                "learning_rate": tune.loguniform(1e-6, 1e-2),
                 "batch_size": tune.choice([8, 16, 32]),
                 "crop_size": tune.choice(
-                    [(32, 32, 4), (64, 64, 4), (128, 128, 4)]
+                    [
+                        (32, 32, 4), (64, 64, 4), (128, 128, 4),
+                        (32, 32, 6), (64, 64, 6), (128, 128, 6),
+                        (32, 32, 8), (64, 64, 8), (128, 128, 8)
+                    ]
                 ),
-                "kernel_depth": tune.choice([4, 8, 16]),
+                "kernel_depth": tune.choice([4, 8]),
                 "kernel_channel_num": tune.choice([16, 32, 64])
             }
         )
@@ -46,7 +50,7 @@ def main(num_of_samples=50, max_num_epochs=100, gpu_per_trail=2, conf=configs):
         metric="loss",
         mode="min",
         max_t=max_num_epochs,
-        grace_period=10,
+        grace_period=20,
         reduction_factor=2
     )
 
@@ -56,7 +60,7 @@ def main(num_of_samples=50, max_num_epochs=100, gpu_per_trail=2, conf=configs):
 
     result = tune.run(
         partial(train_model,),
-        resources_per_trial={'cpu': 2, 'gpu': gpu_per_trail},
+        resources_per_trial={'cpu': cpu_per_trail, 'gpu': gpu_per_trail},
         config=conf,
         num_samples=num_of_samples,
         scheduler=scheduler,
@@ -89,8 +93,9 @@ if __name__ == "__main__":
 
     torch.manual_seed(0)
     main(
-        num_of_samples=50,
+        num_of_samples=100,
         max_num_epochs=100,
         gpu_per_trail=2,
+        cpu_per_trail=4,
         conf=configs3D
     )
