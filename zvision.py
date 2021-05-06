@@ -160,8 +160,9 @@ class ZVision(nn.Module):
         else:
             raise ValueError("Incorrect input image format. Only PIL or torch.Tensor is allowed.")
 
-        if self.dev.type == 'cuda':
-            input_img_tensor = input_img_tensor.to('cuda')
+        if self.dev:
+            if self.dev.type == 'cuda':
+                input_img_tensor = input_img_tensor.to('cuda')
 
         # todo handle 3d case
         outputs = []
