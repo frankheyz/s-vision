@@ -154,7 +154,7 @@ class ZVision(nn.Module):
             input_img_tensor = input_img
             # swap z-axis to the first dimension so that flip and rotations are perform in the x-y plane
             z_index = locate_smallest_axis(input_img_tensor)
-            input_img_tensor = input_img_tensor.transpose(0, z_index)
+            input_img_tensor = input_img_tensor.moveaxis(z_index, 0)
             input_img_tensor = input_img_tensor.unsqueeze(0)  # add the 'batch size' dimension
             swap_z = True
         else:
