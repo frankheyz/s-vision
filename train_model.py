@@ -32,7 +32,7 @@ def serial_training(serial_count):
     return decorator
 
 
-# @serial_training(serial_count=conf['serial_training'])
+@serial_training(serial_count=conf['serial_training'])
 def train_model(configs=conf, checkpoint_dir=None):
     # set random seed
     torch.manual_seed(configs['manual_seed_num'])
@@ -103,9 +103,11 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
-    parser.add_argument("-c", "--print_string", help="Input configs.", default="2d")
+    parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
+    parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
     args = parser.parse_args()
-    input_config = conf if args.print_string == '2d' else conf3D
+    input_config = conf if args.configs == '2d' else conf3D
+    input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
 
     # logger
     path = input_config['save_path']
@@ -121,4 +123,4 @@ if __name__ == "__main__":
 
     # todo check 3d data augmentation
     # todo check output limit
-    # todo rotation saving bug
+    # todo save kernel
