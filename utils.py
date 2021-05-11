@@ -201,7 +201,7 @@ def resize_tensor(
 
     # For a given numeric kernel case, just do convolution and sub-sampling (downscaling only)
     if type(kernel) == np.ndarray and scale_factor[0] <= 1:
-        # todo update numerical_kernel for tensor input
+
         return numeric_kernel(tensor_in, kernel, scale_factor, output_shape, kernel_shift_flag)
 
     # Choose interpolation method, each method has the matching kernel size
@@ -496,13 +496,14 @@ def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
     #         out_im[:, :, channel] = filters.correlate(im[:, :, channel], kernel)
     # else:
     out_im = filters.correlate(im, kernel)
+    out_im_tensor = torch.from_numpy(out_im)
 
     # Then subsample and return
     if len(scale_factor) == 2:
-        return out_im[np.round(np.linspace(0, im.shape[0] - 1 / scale_factor[0], output_shape[0])).astype(int)[:, None],
+        return out_im_tensor[np.round(np.linspace(0, im.shape[0] - 1 / scale_factor[0], output_shape[0])).astype(int)[:, None],
                       np.round(np.linspace(0, im.shape[1] - 1 / scale_factor[1], output_shape[1])).astype(int)]
     else:
-        return out_im[
+        return out_im_tensor[
                 # 1st dim
                 np.round(np.linspace(0, im.shape[0] - 1 / scale_factor[0], output_shape[0])).astype(int)[:, None, None],
                 # 2nd dim
