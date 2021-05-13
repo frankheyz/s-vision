@@ -124,3 +124,4 @@ if __name__ == "__main__":
     # todo check 3d data augmentation
     # todo check output limit
     # todo save kernel
+    # todo save all training code
