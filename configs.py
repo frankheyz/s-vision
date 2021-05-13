@@ -9,9 +9,9 @@ from torch import nn
 configs = {
     # data loading configs
     "image_path": "/home/heyz/code/z-vision/images/low_density_lr.png",
-    "reference_img_path": '/home/heyz/code/z-vision/images/low_density.png',
+    "reference_img_path": "/home/heyz/code/z-vision/images/low_density.png",
     "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_lr.png",
-    "kernel_path": '/home/heyz/code/z-vision/images/BSD100_100_lr_rand_ker_c_X2_0.mat',
+    "kernel_path": '/home/heyz/code/z-vision/images/psf_l_2d.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
     "batch_size": 16,
@@ -51,7 +51,7 @@ configs = {
     "kernel_channel_num": 64,
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
-    "padding": (1, 1),  # padding size should be kernel_size//2 to achieve same convolution
+    "padding": (1, 1),  # padding size should be dilation x (kernel_size - 1) / 2 to achieve same convolution
     "padding_mode": 'reflect',
     "time_lapsed": 100,
     "residual_learning": True,
@@ -74,15 +74,15 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/low_density_z8_lr_3d.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/low_density_z32_3d.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_z8_lr_3d.tif",
-        "learning_rate": 0.0007,
+        "image_path": "/home/heyz/code/z-vision/images/cardiosphere_psf_l_lr.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/cardiosphere_ref.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/cardiosphere_psf_l_lr.tif",
+        "learning_rate": 0.002,
         "crop_size": (64, 64, 6),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
-        "kernel_channel_num": 32,
+        "kernel_channel_num": 16,
         'kernel_depth': 4,
         "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
