@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import glob
-from shutil import copy
+from shutil import copy as copy_file
 import json
 import os
 import time
@@ -299,7 +299,7 @@ class ZVision(nn.Module):
         if self.configs['copy_code']:
             local_dir = os.path.dirname(__file__)
             for py_file in glob.glob(local_dir + '/*.py'):
-                copy(py_file, self.configs['save_path'])
+                copy_file(py_file, self.configs['save_path'])
 
     def evaluate_error(self):
         # mse, ssim etc.
