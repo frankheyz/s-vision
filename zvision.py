@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import glob
+from shutil import copy
 import json
 import os
 import time
@@ -31,6 +33,7 @@ from utils import resize_tensor
 from utils import is_greyscale
 from utils import locate_smallest_axis
 from utils import back_project_tensor
+from utils import valid_image_region
 
 from tabulate import tabulate
 from matplotlib import pyplot as plt
@@ -56,6 +59,10 @@ class ZVision(nn.Module):
 
         # select 2D or 3D kernel
         self.kernel_selected = self.kernel_selector()
+        # update padding
+        pad_size = (self.configs['kernel_dilation'] * (self.configs['kernel_size'] - 1)) / 2
+        self.configs['padding'] = (int(pad_size),) * 2 if self.configs['crop_size'].__len__() == 2 \
+            else (int(pad_size), ) * 3
         self.conv_first = self.kernel_selected(
             in_channels=configs['input_channel_num'],
             out_channels=configs['kernel_channel_num'],
@@ -202,7 +209,6 @@ class ZVision(nn.Module):
             out_dims = network_out.shape.__len__()
             # todo up down flip
             if i < 4:
-                # todo fix z axis bug
                 network_out_undo_aug = torch.rot90(network_out, -i, [out_dims - 2, out_dims - 1])
                 pass
             else:
@@ -290,6 +296,11 @@ class ZVision(nn.Module):
             with open(out_path + "configs.json", 'w') as f:
                 json.dump(self.configs, f, indent=4)
 
+        if self.configs['copy_code']:
+            local_dir = os.path.dirname(__file__)
+            for py_file in glob.glob(local_dir + '/*.py'):
+                copy(py_file, self.configs['save_path'])
+
     def evaluate_error(self):
         # mse, ssim etc.
         # format output
@@ -318,11 +329,23 @@ class ZVision(nn.Module):
             )
         interp_img = interp_img.astype('float32')
         interp_img_normalized = interp_img/np.max(interp_img)
-        sr_mse = mean_squared_error(ref_img_normalized, final_output_np)
-        sr_ssim = ssim(ref_img_normalized, final_output_np)
+        sr_mse = mean_squared_error(
+            valid_image_region(ref_img_normalized, self.configs),
+            valid_image_region(final_output_np, self.configs)
+        )
+        sr_ssim = ssim(
+            valid_image_region(ref_img_normalized, self.configs),
+            valid_image_region(final_output_np, self.configs)
+        )
 
-        interp_mse = mean_squared_error(ref_img_normalized, interp_img_normalized)
-        interp_ssim = ssim(ref_img_normalized, interp_img_normalized)
+        interp_mse = mean_squared_error(
+            valid_image_region(ref_img_normalized, self.configs),
+            valid_image_region(interp_img_normalized, self.configs),
+        )
+        interp_ssim = ssim(
+            valid_image_region(ref_img_normalized, self.configs),
+            valid_image_region(interp_img_normalized, self.configs),
+        )
 
         print(
             tabulate(
@@ -519,8 +542,8 @@ def loss_batch(model, loss_func, xb, yb, opt=None):
     loss = loss_func(model(xb), yb)  # model(xb) is the model output, yb is the target
 
     if opt is not None:
+        opt.zero_grad()
         loss.backward()
         opt.step()
-        opt.zero_grad()
 
     return loss.item(), len(xb)

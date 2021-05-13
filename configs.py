@@ -68,6 +68,7 @@ configs = {
     "output_img_fmt": '.png',
     "model_name": "model.pt",
     "save_configs": True,
+    "copy_code": True,
     "output_configs_dir": 'output_configs/'
 }
 

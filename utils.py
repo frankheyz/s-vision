@@ -481,7 +481,6 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
                           kernel=up_kernel)
 
     return torch.clamp_min(y_sr, 0)
-    # return torch.clamp(y_sr, 0, 1)
 
 
 def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
@@ -619,6 +618,28 @@ def evaluate_error_of_imgs(ref_img, sr_img, lr_img):
             tablefmt='grid'
         )
     )
+
+
+def valid_image_region(input_img, configs):
+    """
+    crop image to avoid edge effect.
+    :param input_img:
+    :param configs:
+    :return:
+    """
+    cut_size = configs['kernel_dilation'] * (configs['kernel_size'] - 1) / 2
+
+    if input_img.shape.__len__() == 2:
+        return input_img[int(cut_size): int(-1-cut_size), int(cut_size): int(-1-cut_size)]
+    elif input_img.shape.__len__() == 3:
+        return input_img[
+               int(cut_size): int(-1-cut_size),
+               int(cut_size): int(-1-cut_size),
+               int(cut_size): int(-1-cut_size)
+               ]
+    else:
+        raise ValueError("Incorrect input image size.")
+
 
 
 class Logger:
