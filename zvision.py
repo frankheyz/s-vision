@@ -145,8 +145,8 @@ class ZVision(nn.Module):
         # output the last layer with residue
         xb_output = xb_last + self.configs['residual_learning'] * xb_high_res
 
-        return torch.clamp_min(xb_output, 0)
-        # return xb_output
+        return torch.clamp(xb_output, 0, 1)
+        # return torch.clamp_min(xb_output, 0)
 
     def output(self):
         # load image
@@ -227,12 +227,12 @@ class ZVision(nn.Module):
                 # show_tensor(network_out[0,:,:], title='net out')
                 # show_tensor(network_out_undo_aug[0,:,:], 'net undo aug')
 
-                # z = 1
             # apply back projection
-            network_out_bp = None
+            network_out_bp = torch.squeeze(network_out_undo_aug)
             for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
                 network_out_bp = back_project_tensor(
-                    y_sr=torch.squeeze(network_out_undo_aug),
+                    # y_sr=torch.squeeze(network_out_undo_aug),
+                    y_sr=network_out_bp,
                     y_lr=torch.squeeze(input_img_tensor),
                     down_kernel=self.configs['downscale_method'],
                     up_kernel=self.configs['upscale_method'],
@@ -240,7 +240,8 @@ class ZVision(nn.Module):
                 )
 
             # normalize network_out_bp
-            network_out_bp = network_out_bp / torch.max(network_out_bp)
+            # todo check if normalization is necessary; check clipping of back projection
+            # network_out_bp = network_out_bp / torch.max(network_out_bp)
             outputs.append(network_out_bp)
 
         intermediate_network_out = torch.median(torch.stack(outputs), 0).values
@@ -275,11 +276,12 @@ class ZVision(nn.Module):
                        + self.configs['output_img_fmt']
             self.output_img_path = os.path.join(out_path, out_name)
             if out_name.endswith('jpg') or out_name.endswith('png'):
-                save_image(self.final_output/torch.max(self.final_output), self.output_img_path)
+                out_img = self.final_output #/ torch.max(self.final_output)
+                save_image(out_img, self.output_img_path)
             elif out_name.endswith('tif'):
                 # save as tif.
                 out_img = self.final_output.cpu().numpy()
-                out_img = out_img / out_img.max()
+                # out_img = out_img / out_img.max()
                 out_img = out_img * 255
                 out_img = out_img.astype('uint8')
                 imsave(self.output_img_path, out_img)
