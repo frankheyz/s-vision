@@ -14,7 +14,7 @@ configs = {
     "kernel_path": '/home/heyz/code/z-vision/images/psf_l_2d.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
-    "batch_size": 16,
+    "batch_size": 8,
     "num_workers": 0,
 
     # data preprocessing configs
@@ -75,9 +75,9 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/cardiosphere_psf_l_lr.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/cardiosphere_ref.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/cardiosphere_psf_l_lr.tif",
+        "image_path": "/home/heyz/code/z-vision/images/yj_128_3d.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/yj_512_3d.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/yj_128_3d.tif",
         "learning_rate": 0.002,
         "crop_size": (64, 64, 6),
         "scale_factor": [2, 2, 2],
