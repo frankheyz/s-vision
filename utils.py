@@ -129,8 +129,8 @@ def read_image(img_path, to_grayscale=True):
             img = np.moveaxis(img, smallest_axis, -1)  # move the z-axis to the last dimension
         # convert numpy img to tensor
         img = torch.from_numpy(img)
-        # todo normalization
-        img = img / torch.max(img)
+        # convert 8-bits image to float
+        img = img / 255
     else:
         img = Image.open(img_path)
 
@@ -480,7 +480,8 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
                           output_shape=y_sr.shape,
                           kernel=up_kernel)
 
-    return torch.clamp_min(y_sr, 0)
+    return torch.clamp(y_sr, 0, 1)
+    # return torch.clamp_min(y_sr, 0)
 
 
 def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
@@ -641,13 +642,12 @@ def valid_image_region(input_img, configs):
         raise ValueError("Incorrect input image size.")
 
 
-
 class Logger:
     def __init__(self, path, file_name='log.txt'):
         self.console = sys.stdout
         os.makedirs(path, exist_ok=True)
         self.file = open(
-            os.path.join(path,file_name), 'w'
+            os.path.join(path, file_name), 'a'
         )
 
     def write(self, message):
