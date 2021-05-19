@@ -306,6 +306,7 @@ class ZVision(nn.Module):
     def evaluate_error(self):
         # mse, ssim etc.
         # format output
+        interp_factor = self.configs['serial_training'] * 2
         final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
         ref_path = self.configs['reference_img_path']
@@ -322,7 +323,7 @@ class ZVision(nn.Module):
 
         # interpolation
         original_lr_img = read_image(self.configs['original_lr_img_for_comparison'], self.configs['to_grayscale'])
-        interp_img = resize_tensor(original_lr_img, 4, kernel=self.configs['interp_method'])
+        interp_img = resize_tensor(original_lr_img, interp_factor, kernel=self.configs['interp_method'])
         interp_img = interp_img.numpy()
         if locate_smallest_axis(ref_img) != locate_smallest_axis(interp_img):
             # move the z axis to the last
@@ -359,12 +360,6 @@ class ZVision(nn.Module):
                 tablefmt='grid'
             )
         )
-
-    def base_change(self):
-        pass
-
-    def learn_rate_policy(self):
-        pass
 
 
 def get_model(configs=conf):
