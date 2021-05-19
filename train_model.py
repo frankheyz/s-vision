@@ -105,6 +105,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train z-vision model.")
     parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
     parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
+    parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
     args = parser.parse_args()
     input_config = conf if args.configs == '2d' else conf3D
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
@@ -112,6 +113,7 @@ if __name__ == "__main__":
     # logger
     path = input_config['save_path']
     sys.stdout = Logger(path)
+    print(args.notes)
 
     m = train_model(configs=input_config)
     result = m.output()
@@ -124,3 +126,4 @@ if __name__ == "__main__":
     # todo check 3d data augmentation
     # todo check output limit
     # todo save kernel
+    # todo no max truncate at the final layer?
