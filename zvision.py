@@ -362,8 +362,36 @@ class ZVision(nn.Module):
         )
 
 
+class ZVisionUp(ZVision):
+    def __init__(self, configs):
+        ZVision.__init__(self, configs=configs)
+        # upgrade network architecture
+
+        # create layers
+        layers = OrderedDict()
+
+        # the 1st layer
+        layers['0'] = self.conv_first
+        # use a for loop to create hidden layers
+        for i in range(1, self.configs['kernel_depth'] - 1):
+            dilation = int(2 ** (i - 1))
+            padding = (dilation * (self.configs['kernel_size'] - 1)) / 2
+            padding = (int(padding),) * 2 if self.configs['crop_size'].__len__() == 2 \
+                else (int(padding),) * 3
+            layers[str(i)] = self.conv_mid(
+                in_channels=configs['kernel_channel_num'],
+                out_channels=configs['kernel_channel_num'],
+                kernel_size=configs['kernel_size'],
+                stride=configs['kernel_stride'],
+                dilation=(dilation,),
+                padding=padding,
+                padding_mode=configs['padding_mode']
+            )
+
+
 def get_model(configs=conf):
-    model = ZVision(configs=configs)
+    model = ZVisionUp(configs=configs)
+
     return model, optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
 
