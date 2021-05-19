@@ -48,7 +48,7 @@ class ZVisionDataset(Dataset):
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
         # For resize image, use kernel provided in .mat file or one of the default kernel
         self.kernel = loadmat(self.configs['kernel_path'])['Kernel'] if self.configs['provide_kernel'] is True \
-            else self.configs['upscale_method']
+            else self.configs['downscale_method']
 
         # load image
         img_path = configs['image_path']
