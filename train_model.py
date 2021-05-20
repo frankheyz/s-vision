@@ -103,17 +103,21 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
+    parser.add_argument("-m", "--model", help="choose model", default='Original model')
     parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
     parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
     parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
     args = parser.parse_args()
+
     input_config = conf if args.configs == '2d' else conf3D
+    input_config['model'] = 'up' if args.model.lower() == 'up' else 'Original model'
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
 
     # logger
     path = input_config['save_path']
     sys.stdout = Logger(path)
     print(args.notes)
+    print("model:", args.model.lower())
 
     m = train_model(configs=input_config)
     result = m.output()
