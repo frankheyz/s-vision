@@ -78,8 +78,6 @@ def train_model(configs=conf, checkpoint_dir=None):
     print('Input image: ', configs['image_path'])
 
     model.to(device=dev)
-    if dev.type == 'cuda':
-        model.dev = dev
 
     # fit the model
     trained_model = fit(
@@ -103,7 +101,7 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
-    parser.add_argument("-m", "--model", help="choose model", default='Original model')
+    parser.add_argument("-m", "--model", help="choose model", default='up')
     parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
     parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
     parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
