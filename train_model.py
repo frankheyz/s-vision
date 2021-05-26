@@ -118,8 +118,8 @@ if __name__ == "__main__":
     print("model:", args.model.lower())
 
     m = train_model(configs=input_config)
-    result = m.output()
-    m.evaluate_error()
+
+    # m.evaluate_error()
     # import matplotlib.pyplot as plt
     # plt.imshow(result.cpu().detach().numpy(), cmap='gray')
     # plt.show()
