@@ -141,7 +141,8 @@ class ZVision(nn.Module):
         xb_instance_high_res_tensor = torch.stack(xb_instance_high_res_list)
 
         # TODO check which activation function is better
-        xb_high_res = xb_instance_high_res_tensor.unsqueeze(1).float()  # add non-x,y dimensions
+        # add channel dimensions (not x,y,z, batch)
+        xb_high_res = xb_instance_high_res_tensor.unsqueeze(1).float()
         xb_mid = F.relu(self.layers[0](xb_high_res))
 
         for layer in range(1, self.configs['kernel_depth'] - 1):
@@ -178,7 +179,7 @@ class ZVision(nn.Module):
                 input_img_tensor = input_img_tensor.to('cuda')
 
         # todo handle 3d case
-        outputs = []
+        outputs = None
         # augmentation using rotation and flipping
         in_dims = input_img_tensor.shape.__len__()
         for i in range(0, 1 + 7 * self.configs['output_flip'], 1 + int(self.scale_factor[0] != self.scale_factor[1])):
@@ -200,7 +201,11 @@ class ZVision(nn.Module):
                     # undo swapping, move z to the last axis for the model inference
                     processed_input = torch.moveaxis(processed_input, 1, -1)
 
-                # output dimensions (1, 1, x, y) or (1, 1, x, y, z)
+                # output dimensions (1, 1, x, y) or (1, 1, x, y, z) [batch size, channel, l, w, h]
+                if isinstance(self, ZVisionMini) and self.configs['crop_size'].__len__() == 3:
+                    # todo: fix here
+                    # this compensate line 144
+                    processed_input = processed_input.unsqueeze(0)
                 network_out = self.__call__(processed_input)
             # undo processing(rotation, flip, etc.)
             network_out = network_out.squeeze()
@@ -248,9 +253,15 @@ class ZVision(nn.Module):
             # normalize network_out_bp
             # todo check if normalization is necessary; check clipping of back projection
             # network_out_bp = network_out_bp / torch.max(network_out_bp)
-            outputs.append(network_out_bp)
+            if outputs is None:
+                outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+            else:
+                outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
+            # outputs.append(network_out_bp)
 
-        intermediate_network_out = torch.median(torch.stack(outputs), 0).values
+        intermediate_network_out = torch.median(outputs, 0).values
+
+        del outputs
 
         # apply back projection for the intermediate result
         for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
@@ -409,25 +420,68 @@ class ZVisionUp(ZVision):
 
 
 class ZVisionMini(ZVision):
-    def __init__(self, configs, scale_factor=2, in_channels=1, out_channels=56, shrinking=12, mid_layers=4):
+    def __init__(self, configs):
         ZVision.__init__(self, configs=configs)
+        scale_factor = int(self.configs['scale_factor'][0])
+        in_channels = self.configs['input_channel_num']
+        out_channels = self.configs['out_channels']
+        shrinking = self.configs['shrinking']
+        mid_layers = self.configs['mid_layers']
+        first_kernel_size = self.configs['first_kernel_size']
+        mid_kernel_size = self.configs['mid_kernel_size']
+        last_kernel_size = self.configs['last_kernel_size']
+
+        self.kernel_selected = self.kernel_selector()
+
         self.conv_first = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=(5,), padding=(5//2, )),
+            self.kernel_selected(
+                in_channels,
+                out_channels,
+                kernel_size=first_kernel_size,
+                padding=first_kernel_size//2
+            ),
             nn.PReLU(out_channels)
         )
-        del self.layers  # todo fix here
-        self.layers = [nn.Conv2d(out_channels, shrinking, kernel_size=(1,)), nn.PReLU(shrinking)]
+        del self.layers
+        self.layers = [
+            self.kernel_selected(
+                in_channels=self.configs['out_channels'],
+                out_channels=self.configs['shrinking'],
+                kernel_size=1
+            ),
+            nn.PReLU(shrinking)
+        ]
         for _ in range(mid_layers):
             self.layers.extend(
-                [nn.Conv2d(shrinking, shrinking, kernel_size=(3,), padding=(3//2, )), nn.PReLU(shrinking)]
+                [
+                    self.kernel_selected(
+                        in_channels=shrinking,
+                        out_channels=shrinking,
+                        kernel_size=mid_kernel_size,
+                        padding=mid_kernel_size//2
+                    ),
+                    nn.PReLU(shrinking)
+                ]
             )
         self.layers.extend(
-            [nn.Conv2d(shrinking, out_channels, kernel_size=(1, )), nn.PReLU(out_channels)]
+            [
+                self.kernel_selected(
+                    in_channels=shrinking,
+                    out_channels=out_channels,
+                    kernel_size=1
+                ),
+                nn.PReLU(out_channels)
+            ]
         )
         self.layers = nn.Sequential(*self.layers)
-        self.conv_last = nn.ConvTranspose2d(
-            out_channels, in_channels, kernel_size=(9, ), stride=(scale_factor, ), padding=(9//2, ),
-                                            output_padding=(scale_factor-1, )
+        transpose_kernel = self.transpose_kernel_selector()
+        self.conv_last = transpose_kernel(
+            in_channels=out_channels,
+            out_channels=in_channels,
+            kernel_size=last_kernel_size,
+            stride=scale_factor,
+            padding=last_kernel_size//2,
+            output_padding=scale_factor-1
         )
 
         self._initialize_weights()
@@ -450,6 +504,15 @@ class ZVisionMini(ZVision):
         x = self.layers(x)
         x = self.conv_last(x)
         return x
+
+    def transpose_kernel_selector(self):
+        # determine if it is 2D or 3D using crop size
+        if len(self.configs['crop_size']) == 2:
+            return nn.ConvTranspose2d
+        elif len(self.configs['crop_size']) == 3:
+            return nn.ConvTranspose3d
+        else:
+            raise ValueError('Incorrect crop size. Please input a list of 2 or 3 elements.')
 
 
 def get_model(configs):
