@@ -22,6 +22,7 @@ from torchvision import transforms
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+from torch.nn.functional import interpolate
 import torchvision.transforms.functional as TF
 
 from skimage.metrics import mean_squared_error
@@ -471,14 +472,27 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
     :param sf:
     :return:
     """
+
     y_sr_low_res_projection = resize_tensor(y_sr,
-                                            scale_factor=1.0/sf,
+                                            scale_factor=1.0 / sf,
                                             output_shape=y_lr.shape,
                                             kernel=down_kernel)
     y_sr += resize_tensor(y_lr - y_sr_low_res_projection,
                           scale_factor=sf,
                           output_shape=y_sr.shape,
                           kernel=up_kernel)
+
+    # if not isinstance(down_kernel, str) or not isinstance(up_kernel, str):
+    #     raise TypeError("Unimplemented resizing methods.")
+    #
+    # # add batch, channel dimensions
+    # y_sr.unsqueeze_(0).unsqueeze_(0)
+    # y_lr.unsqueeze_(0).unsqueeze_(0)
+    #
+    # y_sr_low_res_projection = interpolate(y_sr, scale_factor=1.0/sf[0])
+    # y_sr += interpolate(y_lr - y_sr_low_res_projection, scale_factor=sf[0])
+    #
+    # y_sr = y_sr.squeeze()
 
     return torch.clamp(y_sr, 0, 1)
     # return torch.clamp_min(y_sr, 0)
