@@ -23,6 +23,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch.nn.functional import interpolate
+from torch import nn
 import torchvision.transforms.functional as TF
 
 from skimage.metrics import mean_squared_error
@@ -462,6 +463,7 @@ def resize_along_dim(im, dim, weights, field_of_view):
     return np.swapaxes(tmp_out_im, dim, 0)
 
 
+# todo use scipy.ndimage.zoom to do resizing?
 def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
     """
     Use back projection technique to reduce super resolution error
@@ -671,6 +673,32 @@ class Logger:
     def flush(self):
         self.console.flush()
         self.file.flush()
+
+
+class PixelShuffle3d(nn.Module):
+    '''
+    This class is a 3d version of pixelshuffle.
+    '''
+    def __init__(self, scale):
+        '''
+        :param scale: upsample scale
+        '''
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, input):
+        batch_size, channels, in_depth, in_height, in_width = input.size()
+        nOut = channels // self.scale ** 3
+
+        out_depth = in_depth * self.scale
+        out_height = in_height * self.scale
+        out_width = in_width * self.scale
+
+        input_view = input.contiguous().view(batch_size, nOut, self.scale, self.scale, self.scale, in_depth, in_height, in_width)
+
+        output = input_view.permute(0, 1, 5, 2, 6, 3, 7, 4).contiguous()
+
+        return output.view(batch_size, nOut, out_depth, out_height, out_width)
 
 
 if __name__ == "__main__":

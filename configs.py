@@ -42,7 +42,7 @@ configs = {
     "min_lr": 9e-6,
     "adaptive_lr_factor": 0.5,
     "loss_func": 'l2',
-    "max_epochs": 10,
+    "max_epochs": 1000,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -85,12 +85,12 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/neurons_psf_l_lr.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/yj_512_3d.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/neurons_psf_l_lr.tif",
+        "image_path": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/neurons_ref.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
         "kernel_path": '/home/heyz/code/z-vision/images/psf_l_3d.mat',
         "learning_rate": 0.002,
-        "crop_size": (64, 64, 6),
+        "crop_size": (64, 64, 8),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),

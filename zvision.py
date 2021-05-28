@@ -34,6 +34,7 @@ from utils import is_greyscale
 from utils import locate_smallest_axis
 from utils import back_project_tensor
 from utils import valid_image_region
+from utils import PixelShuffle3d
 
 import math
 
@@ -473,16 +474,30 @@ class ZVisionMini(ZVision):
                 nn.PReLU(out_channels)
             ]
         )
-        self.layers = nn.Sequential(*self.layers)
-        transpose_kernel = self.transpose_kernel_selector()
-        self.conv_last = transpose_kernel(
+
+        self.conv_second_last = self.kernel_selected(
             in_channels=out_channels,
-            out_channels=in_channels,
-            kernel_size=last_kernel_size,
-            stride=scale_factor,
-            padding=last_kernel_size//2,
-            output_padding=scale_factor-1
+            out_channels=scale_factor ** 3,
+            kernel_size=3,
+            padding=3 // 2
         )
+        self.layers.extend([self.conv_second_last])
+
+        self.layers = nn.Sequential(*self.layers)
+
+        if self.configs['crop_size'].__len__() == 2:
+            self.conv_last = nn.PixelShuffle(scale_factor)
+        else:
+            self.conv_last = PixelShuffle3d(scale_factor)
+        # transpose_kernel = self.transpose_kernel_selector()
+        # self.conv_last = transpose_kernel(
+        #     in_channels=out_channels,
+        #     out_channels=in_channels,
+        #     kernel_size=last_kernel_size,
+        #     stride=scale_factor,
+        #     padding=last_kernel_size//2,
+        #     output_padding=scale_factor-1
+        # )
 
         self._initialize_weights()
 
@@ -495,8 +510,10 @@ class ZVisionMini(ZVision):
             if isinstance(m, nn.Conv2d):
                 nn.init.normal_(m.weight, mean=0.0, std=math.sqrt(2/(m.out_channels*m.weight[0][0].numel())))
                 nn.init.zeros_(m.bias)
-        nn.init.normal_(self.conv_last.weight, mean=0.0, std=0.001)
-        nn.init.zeros_(self.conv_last.bias)
+        if hasattr(self.conv_last, 'weight'):
+            nn.init.normal_(self.conv_last.weight, mean=0.0, std=0.001)
+        if hasattr(self.conv_last, 'bias'):
+            nn.init.zeros_(self.conv_last.bias)
 
     def forward(self, x):
         x = x.float()
