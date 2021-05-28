@@ -103,12 +103,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train z-vision model.")
     parser.add_argument("-m", "--model", help="choose model", default='up')
     parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
+    parser.add_argument("-i", "--image_path", help="Input image path.", default=None)
     parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
     parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
     args = parser.parse_args()
 
     input_config = conf if args.configs == '2d' else conf3D
     input_config['model'] = 'up' if args.model.lower() == 'up' else 'Original model'
+    input_config['image_path'] = args.image_path if args.image_path is not None else input_config['image_path']
+    input_config['original_lr_img_for_comparison'] = args.image_path if args.image_path is not None \
+        else input_config['original_lr_img_for_comparison']
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
 
     # logger
@@ -120,12 +124,9 @@ if __name__ == "__main__":
     m = train_model(configs=input_config)
 
     # m.evaluate_error()
-    # import matplotlib.pyplot as plt
-    # plt.imshow(result.cpu().detach().numpy(), cmap='gray')
-    # plt.show()
-    # pass
 
     # todo check 3d data augmentation
-    # todo check output limit
     # todo save kernel
     # todo no max truncate at the final layer?
+    # todo add ssim to objective function
+    # todo add error handler for evaluate_error
