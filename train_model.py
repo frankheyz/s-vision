@@ -123,10 +123,10 @@ if __name__ == "__main__":
 
     m = train_model(configs=input_config)
 
-    # m.evaluate_error()
+    m.evaluate_error()
 
     # todo check 3d data augmentation
     # todo save kernel
     # todo no max truncate at the final layer?
     # todo add ssim to objective function
-    # todo add error handler for evaluate_error
+    # todo background rejection
