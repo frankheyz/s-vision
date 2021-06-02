@@ -1,7 +1,11 @@
 #!/bin/bash
-python3 train_model.py -c 3d -m 'up' -i "/home/heyz/code/z-vision/images/low_density_128_128_15.tif"
-python3 train_model.py -c 3d -m 'up' -i "/home/heyz/code/z-vision/images/low_density_128_128_20.tif"
-python3 train_model.py -c 3d -m 'up' -i "/home/heyz/code/z-vision/images/low_density_128_128_25.tif"
-python3 train_model.py -c 3d -m 'up' -i "/home/heyz/code/z-vision/images/low_density_128_128_30.tif"
+for i in 10 15 20 25 30
+do
+	img='/home/heyz/code/z-vision/images/low_density_128_128_'
+	suffix="${i}.tif"
+	file_name="${img}${suffix}"
 
-echo all experiments finished
+	python3 train_model.py -c 3d -m 'up' -i $file_name
+
+	echo "all experiments finished"
+done
