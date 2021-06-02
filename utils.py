@@ -496,8 +496,8 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
     #
     # y_sr = y_sr.squeeze()
 
-    return torch.clamp(y_sr, 0, 1)
-    # return torch.clamp_min(y_sr, 0)
+    # return torch.clamp(y_sr, 0, 1)
+    return torch.clamp_min(y_sr, 0)
 
 
 def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
