@@ -37,6 +37,7 @@ from utils import valid_image_region
 from utils import PixelShuffle3d
 
 import math
+import warnings
 
 from tabulate import tabulate
 from matplotlib import pyplot as plt
@@ -299,7 +300,8 @@ class ZVision(nn.Module):
             elif out_name.endswith('tif'):
                 # save as tif.
                 out_img = self.final_output.cpu().numpy()
-                # out_img = out_img / out_img.max()
+                if out_img.max() > 1:
+                    out_img = out_img / out_img.max()
                 out_img = out_img * 255
                 out_img = out_img.astype('uint8')
                 imsave(self.output_img_path, out_img)
@@ -350,6 +352,14 @@ class ZVision(nn.Module):
             )
         interp_img = interp_img.astype('float32')
         interp_img_normalized = interp_img/np.max(interp_img)
+
+        if ref_img_normalized.shape != final_output_np:
+            warnings.warn(
+                message='The output image shape does not match the reference. No evaluation was performed.'
+            )
+
+            return
+
         sr_mse = mean_squared_error(
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(final_output_np, self.configs)
@@ -520,7 +530,8 @@ class ZVisionMini(ZVision):
         x = self.conv_first(x)
         x = self.layers(x)
         x = self.conv_last(x)
-        return x
+        # todo residual learning
+        return torch.clamp_min(x, 0)
 
     def transpose_kernel_selector(self):
         # determine if it is 2D or 3D using crop size
