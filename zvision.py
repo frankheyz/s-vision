@@ -353,7 +353,7 @@ class ZVision(nn.Module):
         interp_img = interp_img.astype('float32')
         interp_img_normalized = interp_img/np.max(interp_img)
 
-        if ref_img_normalized.shape != final_output_np:
+        if ref_img_normalized.shape != final_output_np.shape:
             warnings.warn(
                 message='The output image shape does not match the reference. No evaluation was performed.'
             )
