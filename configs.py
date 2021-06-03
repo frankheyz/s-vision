@@ -8,9 +8,9 @@ from torch import nn
 """
 configs = {
     # data loading configs
-    "image_path": "/home/heyz/code/z-vision/images/low_density_lr.png",
-    "reference_img_path": "/home/heyz/code/z-vision/images/low_density.png",
-    "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_lr.png",
+    "image_path": "/home/heyz/code/z-vision/images/yj_256.png",
+    "reference_img_path": "/home/heyz/code/z-vision/images/yj_1024.png",
+    "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/yj_256.png",
     "kernel_path": '/home/heyz/code/z-vision/images/psf_l_2d.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
@@ -34,6 +34,7 @@ configs = {
     "normalization": False,
 
     # training hyper-parameters
+    "model": 'old',
     "use_gpu": True,
     "serial_training": 2,
     "learning_rate": 0.00015,
@@ -41,7 +42,7 @@ configs = {
     "min_lr": 9e-6,
     "adaptive_lr_factor": 0.5,
     "loss_func": 'l2',
-    "max_epochs": 1500,
+    "max_epochs": 1000,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -51,11 +52,20 @@ configs = {
     "kernel_channel_num": 64,
     "kernel_stride": (1, 1),
     "kernel_dilation": 1,
+    "kernel_groups": 1,
     "padding": (1, 1),  # padding size should be dilation x (kernel_size - 1) / 2 to achieve same convolution
     "padding_mode": 'reflect',
     "time_lapsed": 100,
     "residual_learning": True,
     'interp_method': 'cubic',
+
+    # ZVisionMini parameters
+    'shrinking': 12,
+    'out_channels': 56,
+    'mid_layers': 4,
+    'first_kernel_size': 5,
+    'mid_kernel_size': 3,
+    'last_kernel_size': 9,
 
     # save configs
     "configs_file_path": __file__,
@@ -75,17 +85,26 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/yj_128_3d.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/yj_512_3d.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/yj_128_3d.tif",
+        "image_path": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/neurons_ref.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
+        "kernel_path": '/home/heyz/code/z-vision/images/psf_l_3d.mat',
         "learning_rate": 0.002,
-        "crop_size": (64, 64, 6),
+        "crop_size": (64, 64, 8),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
         "padding": (1, 1, 1),
-        "kernel_channel_num": 16,
-        'kernel_depth': 4,
+        "kernel_channel_num": 64,
+        'kernel_depth': 8,
         "padding_mode": 'zeros',
         "output_img_fmt": '.tif',
+
+        # ZVisionMini parameters
+        'shrinking': 12,
+        'out_channels': 16,
+        'mid_layers': 4,
+        'first_kernel_size': 5,
+        'mid_kernel_size': 3,
+        'last_kernel_size': 9,
     }
 )

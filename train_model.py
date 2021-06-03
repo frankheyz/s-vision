@@ -78,8 +78,6 @@ def train_model(configs=conf, checkpoint_dir=None):
     print('Input image: ', configs['image_path'])
 
     model.to(device=dev)
-    if dev.type == 'cuda':
-        model.dev = dev
 
     # fit the model
     trained_model = fit(
@@ -103,24 +101,32 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
+    parser.add_argument("-m", "--model", help="choose model", default='up')
     parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
+    parser.add_argument("-i", "--image_path", help="Input image path.", default=None)
     parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
+    parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
     args = parser.parse_args()
+
     input_config = conf if args.configs == '2d' else conf3D
+    input_config['model'] = 'up' if args.model.lower() == 'up' else 'Original model'
+    input_config['image_path'] = args.image_path if args.image_path is not None else input_config['image_path']
+    input_config['original_lr_img_for_comparison'] = args.image_path if args.image_path is not None \
+        else input_config['original_lr_img_for_comparison']
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
 
     # logger
     path = input_config['save_path']
     sys.stdout = Logger(path)
+    print(args.notes)
+    print("model:", args.model.lower())
 
     m = train_model(configs=input_config)
-    result = m.output()
+
     m.evaluate_error()
-    # import matplotlib.pyplot as plt
-    # plt.imshow(result.cpu().detach().numpy(), cmap='gray')
-    # plt.show()
-    # pass
 
     # todo check 3d data augmentation
-    # todo check output limit
     # todo save kernel
+    # todo no max truncate at the final layer?
+    # todo add ssim to objective function
+    # todo background rejection

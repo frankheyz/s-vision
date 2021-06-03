@@ -22,6 +22,8 @@ from torchvision import transforms
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+from torch.nn.functional import interpolate
+from torch import nn
 import torchvision.transforms.functional as TF
 
 from skimage.metrics import mean_squared_error
@@ -48,7 +50,7 @@ class ZVisionDataset(Dataset):
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
         # For resize image, use kernel provided in .mat file or one of the default kernel
         self.kernel = loadmat(self.configs['kernel_path'])['Kernel'] if self.configs['provide_kernel'] is True \
-            else self.configs['upscale_method']
+            else self.configs['downscale_method']
 
         # load image
         img_path = configs['image_path']
@@ -461,6 +463,7 @@ def resize_along_dim(im, dim, weights, field_of_view):
     return np.swapaxes(tmp_out_im, dim, 0)
 
 
+# todo use scipy.ndimage.zoom to do resizing?
 def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
     """
     Use back projection technique to reduce super resolution error
@@ -471,8 +474,9 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
     :param sf:
     :return:
     """
+
     y_sr_low_res_projection = resize_tensor(y_sr,
-                                            scale_factor=1.0/sf,
+                                            scale_factor=1.0 / sf,
                                             output_shape=y_lr.shape,
                                             kernel=down_kernel)
     y_sr += resize_tensor(y_lr - y_sr_low_res_projection,
@@ -480,8 +484,20 @@ def back_project_tensor(y_sr, y_lr, down_kernel, up_kernel, sf=None):
                           output_shape=y_sr.shape,
                           kernel=up_kernel)
 
-    return torch.clamp(y_sr, 0, 1)
-    # return torch.clamp_min(y_sr, 0)
+    # if not isinstance(down_kernel, str) or not isinstance(up_kernel, str):
+    #     raise TypeError("Unimplemented resizing methods.")
+    #
+    # # add batch, channel dimensions
+    # y_sr.unsqueeze_(0).unsqueeze_(0)
+    # y_lr.unsqueeze_(0).unsqueeze_(0)
+    #
+    # y_sr_low_res_projection = interpolate(y_sr, scale_factor=1.0/sf[0])
+    # y_sr += interpolate(y_lr - y_sr_low_res_projection, scale_factor=sf[0])
+    #
+    # y_sr = y_sr.squeeze()
+
+    # return torch.clamp(y_sr, 0, 1)
+    return torch.clamp_min(y_sr, 0)
 
 
 def numeric_kernel(im, kernel, scale_factor, output_shape, kernel_shift_flag):
@@ -657,6 +673,32 @@ class Logger:
     def flush(self):
         self.console.flush()
         self.file.flush()
+
+
+class PixelShuffle3d(nn.Module):
+    '''
+    This class is a 3d version of pixelshuffle.
+    '''
+    def __init__(self, scale):
+        '''
+        :param scale: upsample scale
+        '''
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, input):
+        batch_size, channels, in_depth, in_height, in_width = input.size()
+        nOut = channels // self.scale ** 3
+
+        out_depth = in_depth * self.scale
+        out_height = in_height * self.scale
+        out_width = in_width * self.scale
+
+        input_view = input.contiguous().view(batch_size, nOut, self.scale, self.scale, self.scale, in_depth, in_height, in_width)
+
+        output = input_view.permute(0, 1, 5, 2, 6, 3, 7, 4).contiguous()
+
+        return output.view(batch_size, nOut, out_depth, out_height, out_width)
 
 
 if __name__ == "__main__":

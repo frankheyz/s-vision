@@ -34,6 +34,10 @@ from utils import is_greyscale
 from utils import locate_smallest_axis
 from utils import back_project_tensor
 from utils import valid_image_region
+from utils import PixelShuffle3d
+
+import math
+import warnings
 
 from tabulate import tabulate
 from matplotlib import pyplot as plt
@@ -44,7 +48,6 @@ from skimage.metrics import structural_similarity as ssim
 
 class ZVision(nn.Module):
     base_sf = 1.0
-    dev = None
     scale_factor = None
     scale_factor_idx = 0
     final_output = None
@@ -52,6 +55,10 @@ class ZVision(nn.Module):
     def __init__(self, configs=conf):
         super(ZVision, self).__init__()
         self.configs = configs
+        self.dev = torch.device(
+            "cuda:0" if torch.cuda.is_available() and configs['use_gpu']
+            else torch.device("cpu")
+        )
         self.original_img_tensor = None
         self.output_img_path = None
         self.scale_factor = np.array(configs['scale_factor']) / np.array(self.base_sf)
@@ -72,15 +79,6 @@ class ZVision(nn.Module):
             padding=configs['padding'],
             padding_mode=configs['padding_mode']
         )
-        self.conv_mid = self.kernel_selected(
-            in_channels=configs['kernel_channel_num'],
-            out_channels=configs['kernel_channel_num'],
-            kernel_size=configs['kernel_size'],
-            stride=configs['kernel_stride'],
-            dilation=configs['kernel_dilation'],
-            padding=configs['padding'],
-            padding_mode=configs['padding_mode']
-        )
         self.conv_last = self.kernel_selected(
             in_channels=configs['kernel_channel_num'],
             out_channels=configs['output_channel_num'],
@@ -92,18 +90,28 @@ class ZVision(nn.Module):
         )
 
         # create layers
-        layers = OrderedDict()
+        layers = list()
 
         # the 1st layer
-        layers['0'] = self.conv_first
+        layers.append(self.conv_first)
 
         # use a for loop to create hidden layers
         for i in range(1, self.configs['kernel_depth'] - 1):
-            layers[str(i)] = self.conv_mid
+            layers.append(
+                self.kernel_selected(
+                    in_channels=configs['kernel_channel_num'],
+                    out_channels=configs['kernel_channel_num'],
+                    kernel_size=configs['kernel_size'],
+                    stride=configs['kernel_stride'],
+                    dilation=configs['kernel_dilation'],
+                    padding=configs['padding'],
+                    padding_mode=configs['padding_mode'],
+                )
+            )
 
         # the last layers
-        layers[str(self.configs['kernel_depth'] - 1)] = self.conv_last
-        self.layers = layers
+        layers.append(self.conv_last)
+        self.layers = nn.ModuleList(layers)
 
     def kernel_selector(self):
         # determine if it is 2D or 3D using crop size
@@ -135,13 +143,14 @@ class ZVision(nn.Module):
         xb_instance_high_res_tensor = torch.stack(xb_instance_high_res_list)
 
         # TODO check which activation function is better
-        xb_high_res = xb_instance_high_res_tensor.unsqueeze(1).float()  # add non-x,y dimensions
-        xb_mid = F.relu(self.layers[str(0)](xb_high_res))
+        # add channel dimensions (not x,y,z, batch)
+        xb_high_res = xb_instance_high_res_tensor.unsqueeze(1).float()
+        xb_mid = F.relu(self.layers[0](xb_high_res))
 
         for layer in range(1, self.configs['kernel_depth'] - 1):
-            xb_mid = F.relu(self.layers[str(layer)](xb_mid))
+            xb_mid = F.relu(self.layers[layer](xb_mid))
 
-        xb_last = self.layers[str(self.configs['kernel_depth'] - 1)](xb_mid)
+        xb_last = self.layers[-1](xb_mid)
         # output the last layer with residue
         xb_output = xb_last + self.configs['residual_learning'] * xb_high_res
 
@@ -172,7 +181,7 @@ class ZVision(nn.Module):
                 input_img_tensor = input_img_tensor.to('cuda')
 
         # todo handle 3d case
-        outputs = []
+        outputs = None
         # augmentation using rotation and flipping
         in_dims = input_img_tensor.shape.__len__()
         for i in range(0, 1 + 7 * self.configs['output_flip'], 1 + int(self.scale_factor[0] != self.scale_factor[1])):
@@ -194,7 +203,11 @@ class ZVision(nn.Module):
                     # undo swapping, move z to the last axis for the model inference
                     processed_input = torch.moveaxis(processed_input, 1, -1)
 
-                # output dimensions (1, 1, x, y) or (1, 1, x, y, z)
+                # output dimensions (1, 1, x, y) or (1, 1, x, y, z) [batch size, channel, l, w, h]
+                if isinstance(self, ZVisionMini) and self.configs['crop_size'].__len__() == 3:
+                    # todo: fix here
+                    # this compensate line 144
+                    processed_input = processed_input.unsqueeze(0)
                 network_out = self.__call__(processed_input)
             # undo processing(rotation, flip, etc.)
             network_out = network_out.squeeze()
@@ -242,9 +255,15 @@ class ZVision(nn.Module):
             # normalize network_out_bp
             # todo check if normalization is necessary; check clipping of back projection
             # network_out_bp = network_out_bp / torch.max(network_out_bp)
-            outputs.append(network_out_bp)
+            if outputs is None:
+                outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+            else:
+                outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
+            # outputs.append(network_out_bp)
 
-        intermediate_network_out = torch.median(torch.stack(outputs), 0).values
+        intermediate_network_out = torch.median(outputs, 0).values
+
+        del outputs
 
         # apply back projection for the intermediate result
         for back_projection_iter in range(self.configs['back_projection_iters'][self.scale_factor_idx]):
@@ -281,7 +300,8 @@ class ZVision(nn.Module):
             elif out_name.endswith('tif'):
                 # save as tif.
                 out_img = self.final_output.cpu().numpy()
-                # out_img = out_img / out_img.max()
+                if out_img.max() > 1:
+                    out_img = out_img / out_img.max()
                 out_img = out_img * 255
                 out_img = out_img.astype('uint8')
                 imsave(self.output_img_path, out_img)
@@ -332,6 +352,14 @@ class ZVision(nn.Module):
             )
         interp_img = interp_img.astype('float32')
         interp_img_normalized = interp_img/np.max(interp_img)
+
+        if ref_img_normalized.shape != final_output_np:
+            warnings.warn(
+                message='The output image shape does not match the reference. No evaluation was performed.'
+            )
+
+            return
+
         sr_mse = mean_squared_error(
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(final_output_np, self.configs)
@@ -368,29 +396,165 @@ class ZVisionUp(ZVision):
         # upgrade network architecture
 
         # create layers
-        layers = OrderedDict()
+        layers = list()
 
         # the 1st layer
-        layers['0'] = self.conv_first
+        layers.append(self.conv_first)
+
+        # dilation setting
+        dilation_list = [None, 1, 1, 1, 1, 1, 1]
+        print(dilation_list)
+        # paddings = [(d * (self.configs['kernel_size'] - 1)) / 2 for d in dilations]
         # use a for loop to create hidden layers
         for i in range(1, self.configs['kernel_depth'] - 1):
-            dilation = int(2 ** (i - 1))
+            dilation = dilation_list[i]
             padding = (dilation * (self.configs['kernel_size'] - 1)) / 2
             padding = (int(padding),) * 2 if self.configs['crop_size'].__len__() == 2 \
                 else (int(padding),) * 3
-            layers[str(i)] = self.conv_mid(
-                in_channels=configs['kernel_channel_num'],
-                out_channels=configs['kernel_channel_num'],
-                kernel_size=configs['kernel_size'],
-                stride=configs['kernel_stride'],
-                dilation=(dilation,),
-                padding=padding,
-                padding_mode=configs['padding_mode']
+            layers.append(
+                self.kernel_selector()(
+                    in_channels=configs['kernel_channel_num'],
+                    out_channels=configs['kernel_channel_num'],
+                    kernel_size=configs['kernel_size'],
+                    stride=configs['kernel_stride'],
+                    dilation=(dilation,),
+                    padding=padding,
+                    padding_mode=configs['padding_mode'],
+                    groups=configs['kernel_groups'],
+                )
             )
+            nn.init.dirac_(layers[i].weight)
+            nn.init.zeros_(layers[i].bias)
+
+        layers.append(self.conv_last)
+        self.layers = nn.ModuleList(layers)
 
 
-def get_model(configs=conf):
-    model = ZVisionUp(configs=configs)
+class ZVisionMini(ZVision):
+    def __init__(self, configs):
+        ZVision.__init__(self, configs=configs)
+        scale_factor = int(self.configs['scale_factor'][0])
+        in_channels = self.configs['input_channel_num']
+        out_channels = self.configs['out_channels']
+        shrinking = self.configs['shrinking']
+        mid_layers = self.configs['mid_layers']
+        first_kernel_size = self.configs['first_kernel_size']
+        mid_kernel_size = self.configs['mid_kernel_size']
+        last_kernel_size = self.configs['last_kernel_size']
+
+        self.kernel_selected = self.kernel_selector()
+
+        self.conv_first = nn.Sequential(
+            self.kernel_selected(
+                in_channels,
+                out_channels,
+                kernel_size=first_kernel_size,
+                padding=first_kernel_size//2
+            ),
+            nn.PReLU(out_channels)
+        )
+        del self.layers
+        self.layers = [
+            self.kernel_selected(
+                in_channels=self.configs['out_channels'],
+                out_channels=self.configs['shrinking'],
+                kernel_size=1
+            ),
+            nn.PReLU(shrinking)
+        ]
+        for _ in range(mid_layers):
+            self.layers.extend(
+                [
+                    self.kernel_selected(
+                        in_channels=shrinking,
+                        out_channels=shrinking,
+                        kernel_size=mid_kernel_size,
+                        padding=mid_kernel_size//2
+                    ),
+                    nn.PReLU(shrinking)
+                ]
+            )
+        self.layers.extend(
+            [
+                self.kernel_selected(
+                    in_channels=shrinking,
+                    out_channels=out_channels,
+                    kernel_size=1
+                ),
+                nn.PReLU(out_channels)
+            ]
+        )
+
+        self.conv_second_last = self.kernel_selected(
+            in_channels=out_channels,
+            out_channels=scale_factor ** 3,
+            kernel_size=3,
+            padding=3 // 2
+        )
+        self.layers.extend([self.conv_second_last])
+
+        self.layers = nn.Sequential(*self.layers)
+
+        if self.configs['crop_size'].__len__() == 2:
+            self.conv_last = nn.PixelShuffle(scale_factor)
+        else:
+            self.conv_last = PixelShuffle3d(scale_factor)
+        # transpose_kernel = self.transpose_kernel_selector()
+        # self.conv_last = transpose_kernel(
+        #     in_channels=out_channels,
+        #     out_channels=in_channels,
+        #     kernel_size=last_kernel_size,
+        #     stride=scale_factor,
+        #     padding=last_kernel_size//2,
+        #     output_padding=scale_factor-1
+        # )
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.conv_first:
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, mean=0.0, std=math.sqrt(2/(m.out_channels*m.weight[0][0].numel())))
+                nn.init.zeros_(m.bias)
+        for m in self.layers:
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, mean=0.0, std=math.sqrt(2/(m.out_channels*m.weight[0][0].numel())))
+                nn.init.zeros_(m.bias)
+        if hasattr(self.conv_last, 'weight'):
+            nn.init.normal_(self.conv_last.weight, mean=0.0, std=0.001)
+        if hasattr(self.conv_last, 'bias'):
+            nn.init.zeros_(self.conv_last.bias)
+
+    def forward(self, x):
+        x = x.float()
+        x = self.conv_first(x)
+        x = self.layers(x)
+        x = self.conv_last(x)
+        # todo residual learning
+        return torch.clamp_min(x, 0)
+
+    def transpose_kernel_selector(self):
+        # determine if it is 2D or 3D using crop size
+        if len(self.configs['crop_size']) == 2:
+            return nn.ConvTranspose2d
+        elif len(self.configs['crop_size']) == 3:
+            return nn.ConvTranspose3d
+        else:
+            raise ValueError('Incorrect crop size. Please input a list of 2 or 3 elements.')
+
+
+def get_model(configs):
+    if configs['model'] == 'up':
+        # model = ZVisionUp(configs=configs)
+        model = ZVisionMini(configs=configs)
+        print('Upgraded model')
+    else:
+        model = ZVision(configs=configs)
+        print('Original model')
+
+    print(
+        count_parameters(model), "trainable parameters."
+    )
 
     return model, optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
@@ -572,3 +736,8 @@ def loss_batch(model, loss_func, xb, yb, opt=None):
         opt.step()
 
     return loss.item(), len(xb)
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
