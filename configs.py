@@ -85,11 +85,11 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/neurons_ref.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/low_density_128_128_10.tif",
+        "image_path": "/home/heyz/code/z-vision/images/256_256_15_gray.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/1024_1024_60_gray.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/256_256_15_gray.tif",
         "kernel_path": '/home/heyz/code/z-vision/images/psf_l_3d.mat',
-        "learning_rate": 0.002,
+        "learning_rate": 0.001,
         "crop_size": (64, 64, 8),
         "scale_factor": [2, 2, 2],
         "kernel_stride": (1, 1, 1),
