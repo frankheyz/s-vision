@@ -130,3 +130,4 @@ if __name__ == "__main__":
     # todo no max truncate at the final layer?
     # todo add ssim to objective function
     # todo background rejection
+    # todo try direct 4x
