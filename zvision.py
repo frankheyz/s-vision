@@ -37,6 +37,7 @@ from utils import valid_image_region
 from utils import PixelShuffle3d
 
 import math
+from math import log10, sqrt
 import warnings
 
 from tabulate import tabulate
@@ -368,6 +369,7 @@ class ZVision(nn.Module):
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(final_output_np, self.configs)
         )
+        sr_psnr = 20 * log10(1/sqrt(sr_mse))
 
         interp_mse = mean_squared_error(
             valid_image_region(ref_img_normalized, self.configs),
@@ -377,12 +379,14 @@ class ZVision(nn.Module):
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(interp_img_normalized, self.configs),
         )
+        interp_psnr = 20 * log10(1/sqrt(interp_mse))
 
         print(
             tabulate(
                 [
-                    ["MSE", "{:.6f}".format(sr_mse), "{:.6f}".format(interp_mse)],
-                    ["SSIM", "{:.6f}".format(sr_ssim), "{:.6f}".format(interp_ssim)]
+                    ["MSE", "{:.6f}".format(sr_mse), "{:.5f}".format(interp_mse)],
+                    ["SSIM", "{:.6f}".format(sr_ssim), "{:.5f}".format(interp_ssim)],
+                    ["PSNR", "{:.6f}".format(sr_psnr), "{:.5f}".format(interp_psnr)],
                 ],
                 headers=['Errors', 'SRx2', 'InterpX2'],
                 tablefmt='grid'
