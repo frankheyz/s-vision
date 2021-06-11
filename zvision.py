@@ -185,7 +185,9 @@ class ZVision(nn.Module):
         outputs = None
         # augmentation using rotation and flipping
         in_dims = input_img_tensor.shape.__len__()
+        aug_number = 0
         for i in range(0, 1 + 7 * self.configs['output_flip'], 1 + int(self.scale_factor[0] != self.scale_factor[1])):
+            aug_number += 1
             # Rotate 90*i degrees and flip if i>=4
             if i < 4:
                 processed_input = torch.rot90(input_img_tensor, i, [in_dims - 2, in_dims - 1])
@@ -257,12 +259,14 @@ class ZVision(nn.Module):
             # todo check if normalization is necessary; check clipping of back projection
             # network_out_bp = network_out_bp / torch.max(network_out_bp)
             if outputs is None:
-                outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+                # outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+                outputs = network_out_bp.unsqueeze(0)
             else:
-                outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
-            # outputs.append(network_out_bp)
+                # outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
+                outputs += network_out_bp.unsqueeze(0)
 
-        intermediate_network_out = torch.median(outputs, 0).values
+        # use the mean to output is memory-friendly but may harm the performance
+        intermediate_network_out = (outputs.squeeze()) / aug_number
 
         del outputs
 
@@ -491,7 +495,7 @@ class ZVisionMini(ZVision):
 
         self.conv_second_last = self.kernel_selected(
             in_channels=out_channels,
-            out_channels=scale_factor ** 3,
+            out_channels=scale_factor ** self.configs['scale_factor'].__len__(),
             kernel_size=3,
             padding=3 // 2
         )
