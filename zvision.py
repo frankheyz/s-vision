@@ -297,7 +297,7 @@ class ZVision(nn.Module):
             img_name = self.configs["image_path"].split('/')[-1]
             out_name = img_name[:-4] \
                        + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
-                       + self.configs['output_img_fmt']
+                       + '.' + self.configs['image_path'].split('.')[-1]
             self.output_img_path = os.path.join(out_path, out_name)
             if out_name.endswith('jpg') or out_name.endswith('png'):
                 out_img = self.final_output #/ torch.max(self.final_output)

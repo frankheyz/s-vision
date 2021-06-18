@@ -123,7 +123,7 @@ class RandomCrop3D:
 
 def read_image(img_path, to_grayscale=True):
     # load image
-    if img_path.endswith('.tif'):
+    if img_path.endswith('.tif') and io.imread(img_path).shape.__len__() != 2:
         img = io.imread(img_path)
         smallest_axis = locate_smallest_axis(img)
         if len(img.shape) == 3 and img.shape[0] >= 1:
