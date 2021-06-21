@@ -125,8 +125,6 @@ if __name__ == "__main__":
 
     m.evaluate_error()
 
-    # todo check 3d data augmentation
-    # todo no max truncate at the final layer?
     # todo add ssim to objective function
     # todo background rejection
     # todo try direct 4x

@@ -255,9 +255,7 @@ class ZVision(nn.Module):
                     sf=self.scale_factor
                 )
 
-            # normalize network_out_bp
-            # todo check if normalization is necessary; check clipping of back projection
-            # network_out_bp = network_out_bp / torch.max(network_out_bp)
+            # todo check clipping of back projection
             if outputs is None:
                 # outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
                 outputs = network_out_bp.unsqueeze(0)
@@ -510,15 +508,6 @@ class ZVisionMini(ZVision):
             self.conv_last = nn.PixelShuffle(scale_factor)
         else:
             self.conv_last = PixelShuffle3d(scale_factor)
-        # transpose_kernel = self.transpose_kernel_selector()
-        # self.conv_last = transpose_kernel(
-        #     in_channels=out_channels,
-        #     out_channels=in_channels,
-        #     kernel_size=last_kernel_size,
-        #     stride=scale_factor,
-        #     padding=last_kernel_size//2,
-        #     output_padding=scale_factor-1
-        # )
 
         self._initialize_weights()
 
