@@ -58,6 +58,7 @@ class ZVisionDataset(Dataset):
         # img = Image.open(img_path)
         # img = img.convert('L')
         self.img = img
+        self.img_mean = self.img.mean()
 
         # img = (img / img.max()).astype(np.float32)
         # self.img = torch.from_numpy(img)
@@ -80,6 +81,14 @@ class ZVisionDataset(Dataset):
         # transform input image for augmentation
         if self.transform:
             img = self.transform(self.img)  # note self.img has to be PIL or TIO subject
+            while background_rejection(
+                    img.sample.data,
+                    threshold=float(self.img_mean)*self.configs['background_threshold'],
+                    percentage=self.configs['background_percentage']
+            ) is False:
+                print('Reject a training patch due to background rejection.')
+                img = self.transform(self.img)
+
         else:
             img = self.img
 
@@ -656,6 +665,15 @@ def valid_image_region(input_img, configs):
                ]
     else:
         raise ValueError("Incorrect input image size.")
+
+
+def background_rejection(input_tensor, threshold=0.1, percentage=0.05):
+    foreground_pixels = (input_tensor > threshold).to(torch.int8)
+    foreground_pixels_no = foreground_pixels.sum()
+    if foreground_pixels_no / torch.numel(input_tensor) > percentage:
+        return True
+    else:
+        return False
 
 
 class Logger:

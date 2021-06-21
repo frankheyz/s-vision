@@ -42,7 +42,7 @@ configs = {
     "min_lr": 9e-6,
     "adaptive_lr_factor": 0.5,
     "loss_func": 'l2',
-    "max_epochs": 10,
+    "max_epochs": 1500,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -55,6 +55,8 @@ configs = {
     "kernel_groups": 1,
     "padding": (1, 1),  # padding size should be dilation x (kernel_size - 1) / 2 to achieve same convolution
     "padding_mode": 'reflect',
+    'background_threshold': 0.1,
+    'background_percentage': 0.25,
     "time_lapsed": 100,
     "residual_learning": True,
     'interp_method': 'cubic',
@@ -85,9 +87,9 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/file_aoon_00001_uint8_lr.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/file_aoon_00001_uint8.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/file_aoon_00001_uint8_lr.tif",
+        "image_path": "/home/heyz/code/z-vision/images/yj_256_256_12.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/yj_1024_1024_48.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/yj_256_256_12.tif",
         "kernel_path": '/home/heyz/code/z-vision/images/psf_l_3d.mat',
         "learning_rate": 0.001,
         "crop_size": (64, 64, 8),

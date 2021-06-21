@@ -126,7 +126,5 @@ if __name__ == "__main__":
     m.evaluate_error()
 
     # todo add ssim to objective function
-    # todo background rejection
-    # todo try direct 4x
     # todo percentile normalization
-    # todo demostrate the advatange of image specific network
+    # todo demonstrate the advantage of image specific network
