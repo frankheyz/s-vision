@@ -332,7 +332,7 @@ class ZVision(nn.Module):
     def evaluate_error(self):
         # mse, ssim etc.
         # format output
-        interp_factor = self.configs['serial_training'] * 2
+        interp_factor = self.configs['serial_training'] * self.configs['scale_factor'][0]
         final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
         ref_path = self.configs['reference_img_path']
