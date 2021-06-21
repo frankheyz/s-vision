@@ -323,6 +323,9 @@ class ZVision(nn.Module):
             with open(out_path + "configs.json", 'w') as f:
                 json.dump(self.configs, f, indent=4)
 
+        if self.configs['provide_kernel'] and self.configs['save_kernel']:
+            copy_file(self.configs["kernel_path"], self.configs['save_path'])
+
         if self.configs['copy_code']:
             local_dir = os.path.dirname(__file__)
             for py_file in glob.glob(local_dir + '/*.py'):

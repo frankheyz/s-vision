@@ -101,11 +101,11 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
-    parser.add_argument("-m", "--model", help="choose model", default='up')
-    parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
+    parser.add_argument("-m", "--model", type=str, help="choose model", default='up')
+    parser.add_argument("-c", "--configs", type=str, help="Input configs.", default="2d")
     parser.add_argument("-i", "--image_path", help="Input image path.", default=None)
-    parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
-    parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
+    parser.add_argument("-k", "--provide_kernel", type=str,help="provide kernel.", default="False")
+    parser.add_argument("-n", "--notes", type=str, help="Add notes.", default="-------------------")
     args = parser.parse_args()
 
     input_config = conf if args.configs == '2d' else conf3D
@@ -126,8 +126,9 @@ if __name__ == "__main__":
     m.evaluate_error()
 
     # todo check 3d data augmentation
-    # todo save kernel
     # todo no max truncate at the final layer?
     # todo add ssim to objective function
     # todo background rejection
     # todo try direct 4x
+    # todo percentile normalization
+    # todo demostrate the advatange of image specific network

@@ -8,9 +8,9 @@ from torch import nn
 """
 configs = {
     # data loading configs
-    "image_path": "/home/heyz/code/z-vision/images/yj_256.png",
+    "image_path": "/home/heyz/code/z-vision/images/mouse_brain_128.tif",
     "reference_img_path": "/home/heyz/code/z-vision/images/yj_1024.png",
-    "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/yj_256.png",
+    "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/mouse_brain_128.tif",
     "kernel_path": '/home/heyz/code/z-vision/images/psf_l_2d.mat',
     "data_format": 'jpg',
     "to_grayscale": True,
@@ -20,7 +20,7 @@ configs = {
     # data preprocessing configs
     "manual_seed_num": 1,
     "scale_factor": [2.0, 2.0],  # list of list (vertical, horizontal) for gradual increments in resolution
-    "provide_kernel": False,
+    "provide_kernel": True,
     "kernel": 'cubic',
     "crop_size": (128, 128),
     "noise_std": 0.0,
@@ -42,7 +42,7 @@ configs = {
     "min_lr": 9e-6,
     "adaptive_lr_factor": 0.5,
     "loss_func": 'l2',
-    "max_epochs": 1000,
+    "max_epochs": 10,
     "min_epochs": 128,
     "show_loss": 50,
     "input_channel_num": 1,
@@ -75,9 +75,9 @@ configs = {
     "checkpoint_dir": 'checkpoint/',
     "save_output_img": True,
     "output_img_dir": 'output_image/',
-    "output_img_fmt": '.png',
     "model_name": "model.pt",
     "save_configs": True,
+    "save_kernel": True,
     "copy_code": True,
     "output_configs_dir": 'output_configs/'
 }
@@ -85,9 +85,9 @@ configs = {
 configs3D = copy.deepcopy(configs)
 configs3D.update(
     {
-        "image_path": "/home/heyz/code/z-vision/images/256_256_15_gray.tif",
-        "reference_img_path": '/home/heyz/code/z-vision/images/1024_1024_60_gray.tif',
-        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/256_256_15_gray.tif",
+        "image_path": "/home/heyz/code/z-vision/images/file_aoon_00001_uint8_lr.tif",
+        "reference_img_path": '/home/heyz/code/z-vision/images/file_aoon_00001_uint8.tif',
+        "original_lr_img_for_comparison": "/home/heyz/code/z-vision/images/file_aoon_00001_uint8_lr.tif",
         "kernel_path": '/home/heyz/code/z-vision/images/psf_l_3d.mat',
         "learning_rate": 0.001,
         "crop_size": (64, 64, 8),
@@ -97,7 +97,6 @@ configs3D.update(
         "kernel_channel_num": 64,
         'kernel_depth': 8,
         "padding_mode": 'zeros',
-        "output_img_fmt": '.tif',
 
         # ZVisionMini parameters
         'shrinking': 12,
