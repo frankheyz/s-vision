@@ -19,11 +19,11 @@ for z in $(seq 1 $zone_count); do
     lateral_hr=$((lateral_lr * 4))
     axial_hr=$((axial_lr * 4))
 
-    lr_prefix='/home/heyz/code/z-vision/images/test_lr/zone'
-    hr_prefix='/home/heyz/code/z-vision/images/test_hr/zone'
+    lr_prefix='/home/heyz/code/z-vision/images/test_lr/thy1_zone'
+    hr_prefix='/home/heyz/code/z-vision/images/test_hr/thy1_zone'
 
-    lr_suffix="${zone}_center_cropped_${lateral_lr}_${lateral_lr}_${axial_lr}.tif"
-    hr_suffix="${zone}_center_cropped_${lateral_hr}_${lateral_hr}_${axial_hr}.tif"
+    lr_suffix="${zone}_new_center_cropped_${lateral_lr}_${lateral_lr}_${axial_lr}.tif"
+    hr_suffix="${zone}_new_center_cropped_${lateral_hr}_${lateral_hr}_${axial_hr}.tif"
 
     lr_file="${lr_prefix}${lr_suffix}"
     hr_file="${hr_prefix}${hr_suffix}"
