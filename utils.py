@@ -58,7 +58,10 @@ class ZVisionDataset(Dataset):
         # img = Image.open(img_path)
         # img = img.convert('L')
         self.img = img
-        self.img_mean = self.img.mean()
+        if isinstance(self.img, PIL.Image.Image):
+            self.img_mean = PIL.ImageStat.Stat(self.img).mean[0]
+        else:
+            self.img_mean = self.img.mean()
 
         # img = (img / img.max()).astype(np.float32)
         # self.img = torch.from_numpy(img)
@@ -81,13 +84,14 @@ class ZVisionDataset(Dataset):
         # transform input image for augmentation
         if self.transform:
             img = self.transform(self.img)  # note self.img has to be PIL or TIO subject
-            while background_rejection(
-                    img.sample.data,
-                    threshold=float(self.img_mean)*self.configs['background_threshold'],
-                    percentage=self.configs['background_percentage']
-            ) is False:
-                print('Reject a training patch due to background rejection.')
-                img = self.transform(self.img)
+            # todo fix 2d .tif input bug
+            # while background_rejection(
+            #         img.sample.data,
+            #         threshold=float(self.img_mean)*self.configs['background_threshold'],
+            #         percentage=self.configs['background_percentage']
+            # ) is False:
+            #     print('Reject a training patch due to background rejection.')
+            #     img = self.transform(self.img)
 
         else:
             img = self.img
