@@ -279,7 +279,7 @@ class ZVision(nn.Module):
                 )
 
         self.final_output = intermediate_network_out
-
+        self.final_output = torch.clamp(self.final_output,0,1)
         self.save_outputs()
 
         return self.final_output
