@@ -103,7 +103,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train z-vision model.")
     parser.add_argument("-m", "--model", type=str, help="choose model", default='up')
     parser.add_argument("-c", "--configs", type=str, help="Input configs.", default="2d")
-    parser.add_argument("-i", "--image_path", help="Input image path.", default=None)
+    parser.add_argument("-i", "--image_path", type=str, help="Input image path.", default=None)
+    parser.add_argument("-r", "--reference_img_path", type=str, help="Reference image path.", default=None)
     parser.add_argument("-k", "--provide_kernel", type=str,help="provide kernel.", default="False")
     parser.add_argument("-n", "--notes", type=str, help="Add notes.", default="-------------------")
     args = parser.parse_args()
@@ -113,6 +114,8 @@ if __name__ == "__main__":
     input_config['image_path'] = args.image_path if args.image_path is not None else input_config['image_path']
     input_config['original_lr_img_for_comparison'] = args.image_path if args.image_path is not None \
         else input_config['original_lr_img_for_comparison']
+    input_config['reference_img_path'] = args.reference_img_path \
+        if args.reference_img_path is not None else input_config['reference_img_path']
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
 
     # logger
