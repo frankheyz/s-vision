@@ -723,6 +723,18 @@ class PixelShuffle3d(nn.Module):
         return output.view(batch_size, nOut, out_depth, out_height, out_width)
 
 
+class Interpolate(nn.Module):
+    def __init__(self, scale_factor, mode):
+        super(Interpolate, self).__init__()
+        self.interp = nn.functional.interpolate
+        self.scale_factor = scale_factor
+        self.mode = mode
+
+    def forward(self, x):
+        x = self.interp(x, scale_factor=self.scale_factor, mode=self.mode)
+        return x
+
+
 if __name__ == "__main__":
     from time import sleep
 
