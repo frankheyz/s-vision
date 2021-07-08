@@ -101,11 +101,13 @@ def train_model(configs=conf, checkpoint_dir=None):
 if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser(description="Train z-vision model.")
-    parser.add_argument("-m", "--model", help="choose model", default='up')
-    parser.add_argument("-c", "--configs", help="Input configs.", default="2d")
-    parser.add_argument("-i", "--image_path", help="Input image path.", default=None)
-    parser.add_argument("-k", "--provide_kernel", help="provide kernel.", default="False")
-    parser.add_argument("-n", "--notes", help="Add notes.", default="-------------------")
+    parser.add_argument("-m", "--model", type=str, help="choose model", default='up')
+    parser.add_argument("-c", "--configs", type=str, help="Input configs.", default="2d")
+    parser.add_argument("-i", "--image_path", type=str, help="Input image path.", default=None)
+    parser.add_argument("-r", "--reference_img_path", type=str, help="Reference image path.", default=None)
+    parser.add_argument("-k", "--provide_kernel", type=str,help="provide kernel.", default="False")
+    parser.add_argument("-e", "--max_epoches", type=int, help="Epoches", default=1500)
+    parser.add_argument("-n", "--notes", type=str, help="Add notes.", default="-------------------")
     args = parser.parse_args()
 
     input_config = conf if args.configs == '2d' else conf3D
@@ -113,7 +115,10 @@ if __name__ == "__main__":
     input_config['image_path'] = args.image_path if args.image_path is not None else input_config['image_path']
     input_config['original_lr_img_for_comparison'] = args.image_path if args.image_path is not None \
         else input_config['original_lr_img_for_comparison']
+    input_config['reference_img_path'] = args.reference_img_path \
+        if args.reference_img_path is not None else input_config['reference_img_path']
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
+    input_config['max_epochs'] = args.max_epoches if args.max_epoches is not None else input_config['max_epochs']
 
     # logger
     path = input_config['save_path']
@@ -125,8 +130,6 @@ if __name__ == "__main__":
 
     m.evaluate_error()
 
-    # todo check 3d data augmentation
-    # todo save kernel
-    # todo no max truncate at the final layer?
     # todo add ssim to objective function
-    # todo background rejection
+    # todo percentile normalization
+    # todo demonstrate the advantage of image specific network

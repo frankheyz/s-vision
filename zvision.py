@@ -35,8 +35,10 @@ from utils import locate_smallest_axis
 from utils import back_project_tensor
 from utils import valid_image_region
 from utils import PixelShuffle3d
+from utils import Interpolate
 
 import math
+from math import log10, sqrt
 import warnings
 
 from tabulate import tabulate
@@ -184,7 +186,9 @@ class ZVision(nn.Module):
         outputs = None
         # augmentation using rotation and flipping
         in_dims = input_img_tensor.shape.__len__()
+        aug_number = 0
         for i in range(0, 1 + 7 * self.configs['output_flip'], 1 + int(self.scale_factor[0] != self.scale_factor[1])):
+            aug_number += 1
             # Rotate 90*i degrees and flip if i>=4
             if i < 4:
                 processed_input = torch.rot90(input_img_tensor, i, [in_dims - 2, in_dims - 1])
@@ -252,16 +256,16 @@ class ZVision(nn.Module):
                     sf=self.scale_factor
                 )
 
-            # normalize network_out_bp
-            # todo check if normalization is necessary; check clipping of back projection
-            # network_out_bp = network_out_bp / torch.max(network_out_bp)
+            # todo check clipping of back projection
             if outputs is None:
-                outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+                # outputs = torch.cat((network_out_bp.unsqueeze(0), ), dim=0)
+                outputs = network_out_bp.unsqueeze(0)
             else:
-                outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
-            # outputs.append(network_out_bp)
+                # outputs = torch.cat((outputs, network_out_bp.unsqueeze(0)), dim=0)
+                outputs += network_out_bp.unsqueeze(0)
 
-        intermediate_network_out = torch.median(outputs, 0).values
+        # use the mean to output is memory-friendly but may harm the performance
+        intermediate_network_out = (outputs.squeeze()) / aug_number
 
         del outputs
 
@@ -276,7 +280,7 @@ class ZVision(nn.Module):
                 )
 
         self.final_output = intermediate_network_out
-
+        self.final_output = torch.clamp(self.final_output,0,1)
         self.save_outputs()
 
         return self.final_output
@@ -292,7 +296,7 @@ class ZVision(nn.Module):
             img_name = self.configs["image_path"].split('/')[-1]
             out_name = img_name[:-4] \
                        + ''.join('X%.2f' % s for s in self.configs['scale_factor']) \
-                       + self.configs['output_img_fmt']
+                       + '.' + self.configs['image_path'].split('.')[-1]
             self.output_img_path = os.path.join(out_path, out_name)
             if out_name.endswith('jpg') or out_name.endswith('png'):
                 out_img = self.final_output #/ torch.max(self.final_output)
@@ -318,6 +322,9 @@ class ZVision(nn.Module):
             with open(out_path + "configs.json", 'w') as f:
                 json.dump(self.configs, f, indent=4)
 
+        if self.configs['provide_kernel'] and self.configs['save_kernel']:
+            copy_file(self.configs["kernel_path"], self.configs['save_path'])
+
         if self.configs['copy_code']:
             local_dir = os.path.dirname(__file__)
             for py_file in glob.glob(local_dir + '/*.py'):
@@ -326,7 +333,7 @@ class ZVision(nn.Module):
     def evaluate_error(self):
         # mse, ssim etc.
         # format output
-        interp_factor = self.configs['serial_training'] * 2
+        interp_factor = self.configs['serial_training'] * self.configs['scale_factor'][0]
         final_output_np = self.final_output.detach().cpu().numpy()
         # load reference image
         ref_path = self.configs['reference_img_path']
@@ -353,7 +360,7 @@ class ZVision(nn.Module):
         interp_img = interp_img.astype('float32')
         interp_img_normalized = interp_img/np.max(interp_img)
 
-        if ref_img_normalized.shape != final_output_np:
+        if ref_img_normalized.shape != final_output_np.shape:
             warnings.warn(
                 message='The output image shape does not match the reference. No evaluation was performed.'
             )
@@ -368,6 +375,7 @@ class ZVision(nn.Module):
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(final_output_np, self.configs)
         )
+        sr_psnr = 20 * log10(1/sqrt(sr_mse))
 
         interp_mse = mean_squared_error(
             valid_image_region(ref_img_normalized, self.configs),
@@ -377,12 +385,14 @@ class ZVision(nn.Module):
             valid_image_region(ref_img_normalized, self.configs),
             valid_image_region(interp_img_normalized, self.configs),
         )
+        interp_psnr = 20 * log10(1/sqrt(interp_mse))
 
         print(
             tabulate(
                 [
-                    ["MSE", "{:.6f}".format(sr_mse), "{:.6f}".format(interp_mse)],
-                    ["SSIM", "{:.6f}".format(sr_ssim), "{:.6f}".format(interp_ssim)]
+                    ["MSE", "{:.6f}".format(sr_mse), "{:.5f}".format(interp_mse)],
+                    ["SSIM", "{:.6f}".format(sr_ssim), "{:.5f}".format(interp_ssim)],
+                    ["PSNR", "{:.6f}".format(sr_psnr), "{:.5f}".format(interp_psnr)],
                 ],
                 headers=['Errors', 'SRx2', 'InterpX2'],
                 tablefmt='grid'
@@ -485,12 +495,18 @@ class ZVisionMini(ZVision):
             ]
         )
 
-        self.conv_second_last = self.kernel_selected(
-            in_channels=out_channels,
-            out_channels=scale_factor ** 3,
-            kernel_size=3,
-            padding=3 // 2
+        # self.conv_second_last = self.kernel_selected(
+        #     in_channels=out_channels,
+        #     out_channels=scale_factor ** self.configs['scale_factor'].__len__(),
+        #     kernel_size=3,
+        #     padding=3 // 2
+        # )
+
+        self.conv_second_last = Interpolate(
+            scale_factor=scale_factor,
+            mode='nearest'
         )
+
         self.layers.extend([self.conv_second_last])
 
         self.layers = nn.Sequential(*self.layers)
@@ -498,16 +514,12 @@ class ZVisionMini(ZVision):
         if self.configs['crop_size'].__len__() == 2:
             self.conv_last = nn.PixelShuffle(scale_factor)
         else:
-            self.conv_last = PixelShuffle3d(scale_factor)
-        # transpose_kernel = self.transpose_kernel_selector()
-        # self.conv_last = transpose_kernel(
-        #     in_channels=out_channels,
-        #     out_channels=in_channels,
-        #     kernel_size=last_kernel_size,
-        #     stride=scale_factor,
-        #     padding=last_kernel_size//2,
-        #     output_padding=scale_factor-1
-        # )
+            self.conv_last = self.kernel_selected(
+                in_channels=out_channels,
+                out_channels=1,
+                kernel_size=3,
+                padding=3 // 2
+        )
 
         self._initialize_weights()
 

@@ -58,6 +58,10 @@ class ZVisionDataset(Dataset):
         # img = Image.open(img_path)
         # img = img.convert('L')
         self.img = img
+        if isinstance(self.img, PIL.Image.Image):
+            self.img_mean = PIL.ImageStat.Stat(self.img).mean[0]
+        else:
+            self.img_mean = self.img.mean()
 
         # img = (img / img.max()).astype(np.float32)
         # self.img = torch.from_numpy(img)
@@ -80,6 +84,15 @@ class ZVisionDataset(Dataset):
         # transform input image for augmentation
         if self.transform:
             img = self.transform(self.img)  # note self.img has to be PIL or TIO subject
+            # todo fix 2d .tif input bug
+            # while background_rejection(
+            #         img.sample.data,
+            #         threshold=float(self.img_mean)*self.configs['background_threshold'],
+            #         percentage=self.configs['background_percentage']
+            # ) is False:
+            #     print('Reject a training patch due to background rejection.')
+            #     img = self.transform(self.img)
+
         else:
             img = self.img
 
@@ -123,7 +136,7 @@ class RandomCrop3D:
 
 def read_image(img_path, to_grayscale=True):
     # load image
-    if img_path.endswith('.tif'):
+    if img_path.endswith('.tif') and io.imread(img_path).shape.__len__() != 2:
         img = io.imread(img_path)
         smallest_axis = locate_smallest_axis(img)
         if len(img.shape) == 3 and img.shape[0] >= 1:
@@ -658,6 +671,15 @@ def valid_image_region(input_img, configs):
         raise ValueError("Incorrect input image size.")
 
 
+def background_rejection(input_tensor, threshold=0.1, percentage=0.05):
+    foreground_pixels = (input_tensor > threshold).to(torch.int8)
+    foreground_pixels_no = foreground_pixels.sum()
+    if foreground_pixels_no / torch.numel(input_tensor) > percentage:
+        return True
+    else:
+        return False
+
+
 class Logger:
     def __init__(self, path, file_name='log.txt'):
         self.console = sys.stdout
@@ -699,6 +721,18 @@ class PixelShuffle3d(nn.Module):
         output = input_view.permute(0, 1, 5, 2, 6, 3, 7, 4).contiguous()
 
         return output.view(batch_size, nOut, out_depth, out_height, out_width)
+
+
+class Interpolate(nn.Module):
+    def __init__(self, scale_factor, mode):
+        super(Interpolate, self).__init__()
+        self.interp = nn.functional.interpolate
+        self.scale_factor = scale_factor
+        self.mode = mode
+
+    def forward(self, x):
+        x = self.interp(x, scale_factor=self.scale_factor, mode=self.mode)
+        return x
 
 
 if __name__ == "__main__":
