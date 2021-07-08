@@ -35,6 +35,7 @@ from utils import locate_smallest_axis
 from utils import back_project_tensor
 from utils import valid_image_region
 from utils import PixelShuffle3d
+from utils import Interpolate
 
 import math
 from math import log10, sqrt
@@ -494,12 +495,18 @@ class ZVisionMini(ZVision):
             ]
         )
 
-        self.conv_second_last = self.kernel_selected(
-            in_channels=out_channels,
-            out_channels=scale_factor ** self.configs['scale_factor'].__len__(),
-            kernel_size=3,
-            padding=3 // 2
+        # self.conv_second_last = self.kernel_selected(
+        #     in_channels=out_channels,
+        #     out_channels=scale_factor ** self.configs['scale_factor'].__len__(),
+        #     kernel_size=3,
+        #     padding=3 // 2
+        # )
+
+        self.conv_second_last = Interpolate(
+            scale_factor=scale_factor,
+            mode='nearest'
         )
+
         self.layers.extend([self.conv_second_last])
 
         self.layers = nn.Sequential(*self.layers)
@@ -507,7 +514,12 @@ class ZVisionMini(ZVision):
         if self.configs['crop_size'].__len__() == 2:
             self.conv_last = nn.PixelShuffle(scale_factor)
         else:
-            self.conv_last = PixelShuffle3d(scale_factor)
+            self.conv_last = self.kernel_selected(
+                in_channels=out_channels,
+                out_channels=1,
+                kernel_size=3,
+                padding=3 // 2
+        )
 
         self._initialize_weights()
 
