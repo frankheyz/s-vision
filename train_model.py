@@ -106,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--image_path", type=str, help="Input image path.", default=None)
     parser.add_argument("-r", "--reference_img_path", type=str, help="Reference image path.", default=None)
     parser.add_argument("-k", "--provide_kernel", type=str,help="provide kernel.", default="False")
+    parser.add_argument("-e", "--max_epoches", type=int, help="Epoches", default=1500)
     parser.add_argument("-n", "--notes", type=str, help="Add notes.", default="-------------------")
     args = parser.parse_args()
 
@@ -117,6 +118,7 @@ if __name__ == "__main__":
     input_config['reference_img_path'] = args.reference_img_path \
         if args.reference_img_path is not None else input_config['reference_img_path']
     input_config['provide_kernel'] = True if args.provide_kernel.lower() == 'true' else False
+    input_config['max_epochs'] = args.max_epoches if args.max_epoches is not None else input_config['max_epochs']
 
     # logger
     path = input_config['save_path']
