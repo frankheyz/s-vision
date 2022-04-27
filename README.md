@@ -1,3 +1,3 @@
-# z-vision
+# s-vision
 
-zero-shot volumetric image super-resolution
+self-supervised volumetric image super-resolution
