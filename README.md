@@ -1,4 +1,5 @@
 # S-Vision
+<img src='images/thumbnail.png' width="520px">
 
 ***Note***: Code repository for "Self-Supervised Deep Learning Two-Photon Microscopy"
 
@@ -15,6 +16,11 @@ The code has been tested using:
 ```bash
   > git clone https://github.com/frankheyz/s-vision.git
   > cd s-vision
+```
+
+- Install packages from `requirement.txt`
+```bash
+  > pip3 install -r requirements.txt
 ```
 
 - Config the parameters in `config.py`

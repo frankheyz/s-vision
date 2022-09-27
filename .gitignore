@@ -9,3 +9,6 @@
 *.tif
 *.git
 *.mat
+
+# excluding
+!thumbnail.png
