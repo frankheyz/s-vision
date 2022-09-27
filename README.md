@@ -1,5 +1,5 @@
 # S-Vision
-<img src='images/thumbnail.png' width="520px">
+<img src='images/thumbnail.png' width="600px">
 
 ***Note***: Code repository for "Self-Supervised Deep Learning Two-Photon Microscopy"
 
